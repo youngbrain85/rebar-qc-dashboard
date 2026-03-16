@@ -4,7 +4,7 @@ import plotly.express as px
 import base64
 import os
 
-# 1. 페이지 기본 설정
+# 1. 페이지 설정
 st.set_page_config(page_title="철근 시공 품질 대시보드", layout="wide")
 
 st.title("🏗️ 철근 시공 품질 검측 대시보드")
@@ -36,17 +36,21 @@ if os.path.exists(csv_file):
         
         # 색상 범례 가이드
         st.markdown("""
-        **[색상 가이드]**
-        - ⚪ **회색**: 합격 (PASS) | 🟢 **녹색**: 주의 (CAUTION) 
-        - 🟠 **주황**: 오류 (ERROR) | 🔴 **빨강**: 누락 (MISSING)
+        **[시공 상태 색상 안내]**
+        - ⚪ **회색 (PASS)**: 정상 시공
+        - 🟢 **녹색 (CAUTION)**: 주의 (오차 20-30mm)
+        - 🟠 **주황 (ERROR)**: 오류 (오차 30mm 초과)
+        - 🔴 **빨강 (MISSING)**: 철근 누락
         """)
 
         if os.path.exists(glb_file):
             with open(glb_file, "rb") as f:
                 b64_glb = base64.b64encode(f.read()).decode()
             
-            # [최종 정렬] orientation="-90deg 0 0" 
-            # 건축용 Z-up 데이터를 웹용 Y-up으로 세우는 가장 정확한 수치입니다.
+            # [교수님 요청 사항 반영]
+            # 1. X축 -90deg: 모델을 똑바로 세움 (Z-up 변환)
+            # 2. Y축 -90deg: 위아래 축 기준 시계방향 회전
+            # 3. Z축 -90deg: 앞뒤 축 기준 시계방향 회전
             model_viewer_html = f"""
             <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
             <model-viewer src="data:model/gltf-binary;base64,{b64_glb}" 
@@ -54,7 +58,7 @@ if os.path.exists(csv_file):
                           camera-controls 
                           touch-action="pan-y" 
                           shadow-intensity="1"
-                          orientation="-90deg 0 0"
+                          orientation="-90deg -90deg -90deg"
                           exposure="1.0">
             </model-viewer>
             """
@@ -65,30 +69,39 @@ if os.path.exists(csv_file):
     with right_col:
         st.subheader("📊 품질 상태별 분포")
         
+        # 가로 막대 그래프
         bar_data = pd.DataFrame({
             '상태': ['합격', '주의', '오류', '누락'],
             '개수': [
-                status_counts.get('PASS', 0), status_counts.get('CAUTION', 0),
-                status_counts.get('ERROR', 0), status_counts.get('MISSING', 0)
+                status_counts.get('PASS', 0),
+                status_counts.get('CAUTION', 0),
+                status_counts.get('ERROR', 0),
+                status_counts.get('MISSING', 0)
             ],
             'Status': ['PASS', 'CAUTION', 'ERROR', 'MISSING']
         })
         
         fig_bar = px.bar(bar_data, x='개수', y='상태', orientation='h',
                          color='Status',
-                         color_discrete_map={'PASS': '#808080', 'CAUTION': '#008000', 'ERROR': '#FFA500', 'MISSING': '#FF0000'},
+                         color_discrete_map={
+                             'PASS': '#808080', 'CAUTION': '#008000', 
+                             'ERROR': '#FFA500', 'MISSING': '#FF0000'
+                         },
                          text='개수')
         
-        fig_bar.update_layout(showlegend=False, height=250, margin=dict(l=10, r=10, t=10, b=10), xaxis_title="철근 개수", yaxis_title="")
+        fig_bar.update_layout(
+            showlegend=False, height=250, margin=dict(l=10, r=10, t=10, b=10),
+            xaxis_title="철근 개수", yaxis_title=""
+        )
         st.plotly_chart(fig_bar, use_container_width=True)
 
         st.subheader("📋 상세 검측 목록")
         df_view = df[['Rebar_ID', 'Error_mm', 'Status', 'Layer', 'Direction']].copy()
         df_view.columns = ['철근 ID', '오차(mm)', '상태', '레이어', '방향']
-        df_view['sort'] = pd.to_numeric(df_view['오차(mm)'], errors='coerce').fillna(-1)
-        df_view = df_view.sort_values(by='sort', ascending=False).drop(columns=['sort'])
+        df_view['정렬용'] = pd.to_numeric(df_view['오차(mm)'], errors='coerce').fillna(-1)
+        df_view = df_view.sort_values(by='정렬용', ascending=False).drop(columns=['정렬용'])
 
         st.dataframe(df_view, use_container_width=True, height=350)
 
 else:
-    st.error("CSV 데이터를 찾을 수 없습니다.")
+    st.error("데이터를 불러올 수 없습니다.")
