@@ -32,7 +32,7 @@ if os.path.exists(csv_file):
     left_col, right_col = st.columns([6, 4])
 
     with left_col:
-        st.subheader("🌐 3차원 품질 검측 모델 (X/Y축 회전 적용)")
+        st.subheader("🌐 3차원 품질 검측 모델 (Z축 90도 회전 적용)")
         
         # 색상 범례 가이드
         st.markdown("""
@@ -47,8 +47,8 @@ if os.path.exists(csv_file):
             with open(glb_file, "rb") as f:
                 b64_glb = base64.b64encode(f.read()).decode()
             
-            # [수정] orientation="90deg 90deg 0"
-            # 첫 번째 값: X축 회전, 두 번째 값: Y축 회전
+            # [수정] orientation="0 0 90deg"
+            # X, Y축 회전은 0으로 초기화하고 Z축만 90도 회전시킵니다.
             model_viewer_html = f"""
             <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
             <model-viewer src="data:model/gltf-binary;base64,{b64_glb}" 
@@ -56,7 +56,7 @@ if os.path.exists(csv_file):
                           camera-controls 
                           touch-action="pan-y" 
                           shadow-intensity="1"
-                          orientation="90deg 90deg 0"
+                          orientation="0 0 90deg"
                           exposure="1.0">
             </model-viewer>
             """
