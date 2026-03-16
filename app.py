@@ -8,7 +8,7 @@ import os
 st.set_page_config(page_title="철근 시공 품질 대시보드", layout="wide")
 
 st.title("🏗️ 철근 시공 품질 검측 대시보드")
-st.info("Indiana State University - Built Environment | PI: 박지수 교수")
+st.info("철근 시공 품질 분석 및 시각화 시스템")
 
 # 파일 경로
 csv_file = "final_qc_report_detailed.csv"
@@ -32,7 +32,7 @@ if os.path.exists(csv_file):
     left_col, right_col = st.columns([6, 4])
 
     with left_col:
-        st.subheader("🌐 3차원 품질 검측 모델 (X축 90도 회전)")
+        st.subheader("🌐 3차원 품질 검측 모델 (X/Y축 회전 적용)")
         
         # 색상 범례 가이드
         st.markdown("""
@@ -47,8 +47,8 @@ if os.path.exists(csv_file):
             with open(glb_file, "rb") as f:
                 b64_glb = base64.b64encode(f.read()).decode()
             
-            # [수정] orientation="90deg 0 0" 을 사용하여 
-            # 모델을 X축 기준으로 90도 회전시켜 세웁니다.
+            # [수정] orientation="90deg 90deg 0"
+            # 첫 번째 값: X축 회전, 두 번째 값: Y축 회전
             model_viewer_html = f"""
             <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
             <model-viewer src="data:model/gltf-binary;base64,{b64_glb}" 
@@ -56,7 +56,7 @@ if os.path.exists(csv_file):
                           camera-controls 
                           touch-action="pan-y" 
                           shadow-intensity="1"
-                          orientation="90deg 0 0"
+                          orientation="90deg 90deg 0"
                           exposure="1.0">
             </model-viewer>
             """
