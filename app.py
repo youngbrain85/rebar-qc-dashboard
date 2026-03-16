@@ -26,7 +26,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # 헤더 섹션
-st.title("🏗️ Rebar Construction Quality Integrated Dashboard")
+st.title("철근검측 결과 대시보드")
 st.markdown("---")
 
 # 파일 경로
