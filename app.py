@@ -53,12 +53,12 @@ if os.path.exists(csv_file):
     with right_col:
         st.subheader("📊 Quality Statistics")
         fig_pie = px.pie(df, names='Status', color='Status',
-                         color_discrete_map={{
+                         color_discrete_map={
                              'PASS': '#808080', 
                              'CAUTION': '#008000', 
                              'ERROR': '#FFA500', 
                              'MISSING': '#FF0000'
-                         }})
+                         })
         fig_pie.update_layout(margin=dict(l=20, r=20, t=20, b=20))
         st.plotly_chart(fig_pie, use_container_width=True)
 
