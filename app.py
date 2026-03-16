@@ -32,7 +32,7 @@ if os.path.exists(csv_file):
     left_col, right_col = st.columns([6, 4])
 
     with left_col:
-        st.subheader("🌐 3차원 품질 검측 모델 (Z-Up 축 교정)")
+        st.subheader("🌐 3차원 품질 검측 모델 (X축 90도 회전)")
         
         # 색상 범례 가이드
         st.markdown("""
@@ -47,8 +47,8 @@ if os.path.exists(csv_file):
             with open(glb_file, "rb") as f:
                 b64_glb = base64.b64encode(f.read()).decode()
             
-            # [핵심] orientation="-90deg 0 0" 을 사용하여 
-            # GLB의 Y-up 표준을 건축의 Z-up 좌표계로 강제 전환합니다.
+            # [수정] orientation="90deg 0 0" 을 사용하여 
+            # 모델을 X축 기준으로 90도 회전시켜 세웁니다.
             model_viewer_html = f"""
             <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
             <model-viewer src="data:model/gltf-binary;base64,{b64_glb}" 
@@ -56,7 +56,7 @@ if os.path.exists(csv_file):
                           camera-controls 
                           touch-action="pan-y" 
                           shadow-intensity="1"
-                          orientation="-90deg 0 0"
+                          orientation="90deg 0 0"
                           exposure="1.0">
             </model-viewer>
             """
