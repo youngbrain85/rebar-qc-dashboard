@@ -8,7 +8,7 @@ import os
 st.set_page_config(page_title="Rebar QC Dashboard", layout="wide")
 
 st.title("🏗️ Rebar Construction Quality Dashboard")
-st.info("Indiana State University - Built Environment | PI: Prof. Jisoo Park")
+st.info("Rebar Quality Control Analysis | Dashboard")
 
 # 파일 경로 (GitHub 저장소 내 파일명)
 csv_file = "final_qc_report_detailed.csv"
@@ -38,8 +38,8 @@ if os.path.exists(csv_file):
             with open(glb_file, "rb") as f:
                 b64_glb = base64.b64encode(f.read()).decode()
             
-            # [축 방향 수정] orientation="90deg 0 90deg"
-            # X축을 위아래(Vertical), Z축을 좌우(Horizontal), Y축을 앞뒤(Depth)로 매핑
+            # [축 방향 수정] orientation="90deg 0 0deg"
+            # X축: 상하(Vertical), Y축: 좌우(Horizontal), Z축: 앞뒤(Depth)
             model_viewer_html = f"""
             <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
             <model-viewer src="data:model/gltf-binary;base64,{b64_glb}" 
@@ -47,7 +47,7 @@ if os.path.exists(csv_file):
                           camera-controls 
                           touch-action="pan-y" 
                           shadow-intensity="1"
-                          orientation="90deg 0 90deg"
+                          orientation="90deg 0 0deg"
                           exposure="1.2">
             </model-viewer>
             """
@@ -56,22 +56,21 @@ if os.path.exists(csv_file):
             st.warning("GLB 파일을 찾을 수 없습니다.")
 
     with right_col:
-        st.subheader("📋 Detailed Rebar Error Table")
+        st.subheader("📊 Individual Rebar Error Table")
         
-        # 데이터 정렬: 오차가 큰 순서대로 (ERROR -> CAUTION -> PASS)
-        # Error_mm의 '-' 값을 처리하기 위해 숫자 변환
+        # 데이터 정렬: 오차가 큰 순서대로 정렬하여 문제 부재를 상단에 배치
         df_display = df.copy()
         df_display['sort_val'] = pd.to_numeric(df_display['Error_mm'], errors='coerce').fillna(-1)
         df_display = df_display.sort_values(by='sort_val', ascending=False).drop(columns=['sort_val'])
 
-        # 교수님 요청에 따른 전체 오차 테이블 배치
+        # 전체 철근 리스트 및 오차 테이블 (높이 조정)
         st.dataframe(
             df_display[['Rebar_ID', 'Error_mm', 'Status', 'Layer', 'Direction']], 
             use_container_width=True, 
             height=450
         )
 
-        # 상태 분포 시각화 (보조)
+        # 상태별 분포 파이 차트
         fig_pie = px.pie(df, names='Status', color='Status',
                          color_discrete_map={
                              'PASS': '#808080', 
@@ -81,6 +80,8 @@ if os.path.exists(csv_file):
                          })
         fig_pie.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=200, showlegend=True)
         st.plotly_chart(fig_pie, use_container_width=True)
+
+    # [삭제됨] See Full Inspection Data 섹션 (교수님 요청 반영)
 
 else:
     st.error(f"데이터 파일을 찾을 수 없습니다: {csv_file}")
