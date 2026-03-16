@@ -29,65 +29,76 @@ if os.path.exists(csv_file) and os.path.exists(glb_file):
     col3.metric("주의/오류", f"{issue_count}개", delta_color="inverse")
     col4.metric("누락 (MISSING)", f"{status_counts.get('MISSING', 0)}개")
 
-    # 3. 메인 레이아웃 (좌: 3D 모델 / 우: 분석 차트)
+    # 3. 메인 레이아웃
     left_col, right_col = st.columns([6, 4])
 
     with left_col:
         st.subheader("🌐 3차원 품질 검측 모델")
-        
-        # 색상 범례 가이드
         st.markdown("""
         **[범례]** ⚪ 회색: 합격 | 🟢 녹색: 주의 | 🟠 주황: 오류 | 🔴 빨강: 누락
         """)
 
-        # [뷰어 교체] Plotly를 이용한 Z-Up 3D 시각화
         try:
             # GLB 파일 로드
             scene = trimesh.load(glb_file)
             fig_3d = go.Figure()
 
-            # Scene 내의 모든 Mesh를 Plotly 데이터로 변환
+            # Scene 내의 모든 Geometry 탐색
             if isinstance(scene, trimesh.Scene):
-                for name, mesh in scene.geometry.items():
-                    # 색상 추출 (PASS/CAUTION 등 상태별 색상 반영)
-                    color = "gray"
-                    if hasattr(mesh.visual, 'main_color'):
-                        c = mesh.visual.main_color
+                for name, geom in scene.geometry.items():
+                    # [핵심 수정] 색상 추출 로직 강화
+                    color = 'rgb(128, 128, 128)' # 기본값 회색
+                    
+                    # 1. 재질(Material) 정보가 있는 경우 확산색(diffuse) 추출
+                    if hasattr(geom.visual, 'material'):
+                        mat = geom.visual.material
+                        if hasattr(mat, 'diffuse'):
+                            c = mat.diffuse
+                            color = f'rgb({c[0]},{c[1]},{c[2]})'
+                    
+                    # 2. 재질 정보가 없고 정점/면 색상이 있는 경우
+                    elif hasattr(geom.visual, 'vertex_colors') and len(geom.visual.vertex_colors) > 0:
+                        c = geom.visual.vertex_colors[0]
                         color = f'rgb({c[0]},{c[1]},{c[2]})'
                     
+                    # Plotly Mesh3d 추가
                     fig_3d.add_trace(go.Mesh3d(
-                        x=mesh.vertices[:, 0],
-                        y=mesh.vertices[:, 1],
-                        z=mesh.vertices[:, 2],
-                        i=mesh.faces[:, 0],
-                        j=mesh.faces[:, 1],
-                        k=mesh.faces[:, 2],
+                        x=geom.vertices[:, 0],
+                        y=geom.vertices[:, 1],
+                        z=geom.vertices[:, 2],
+                        i=geom.faces[:, 0],
+                        j=geom.faces[:, 1],
+                        k=geom.faces[:, 2],
                         color=color,
                         name=name,
                         opacity=1.0,
-                        lighting=dict(ambient=0.5, diffuse=0.8, roughness=0.5)
+                        flatshading=True,
+                        lighting=dict(ambient=0.6, diffuse=0.8, specular=0.1)
                     ))
             
-            # [축 방향 설정] Z: 상하(높이), X: 좌우, Y: 앞뒤
+            # Z-Up 좌표계 및 카메라 설정
             fig_3d.update_layout(
                 scene=dict(
                     xaxis=dict(title='X (좌우)'),
                     yaxis=dict(title='Y (앞뒤)'),
                     zaxis=dict(title='Z (상하)'),
-                    aspectmode='data', # 실제 비율 유지
-                    camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)) # 초기 카메라 시점
+                    aspectmode='data',
+                    camera=dict(
+                        up=dict(x=0, y=0, z=1), # Z축을 위로 설정
+                        eye=dict(x=1.5, y=1.5, z=1.5)
+                    )
                 ),
                 margin=dict(l=0, r=0, b=0, t=0),
                 height=600
             )
             st.plotly_chart(fig_3d, use_container_width=True)
+            
         except Exception as e:
-            st.error(f"3D 모델 로딩 중 오류 발생: {e}")
+            st.error(f"3D 모델을 시각화하는 중 오류가 발생했습니다: {e}")
 
     with right_col:
-        st.subheader("📊 품질 상태별 분포")
+        st.subheader("📊 품질 상태 분포")
         
-        # [교체] 원 그래프 대신 가로 막대 그래프
         bar_df = pd.DataFrame({
             '상태': ['합격', '주의', '오류', '누락'],
             '개수': [
@@ -108,19 +119,15 @@ if os.path.exists(csv_file) and os.path.exists(glb_file):
                          text='개수')
         
         fig_bar.update_layout(showlegend=False, height=300, margin=dict(l=10, r=10, t=10, b=10))
-        fig_bar.update_xaxes(title="철근 수")
-        fig_bar.update_yaxes(title="")
         st.plotly_chart(fig_bar, use_container_width=True)
 
-        st.subheader("📋 철근별 상세 데이터")
-        # 데이터프레임 한글화 및 오차 정렬
+        st.subheader("📋 상세 검측 리스트")
         view_df = df.copy()
         view_df.columns = ['철근 ID', '레이어', '방향', '오차(mm)', '상태']
-        # 오차순으로 정렬 (주의/오류 우선 확인)
         view_df['sort'] = pd.to_numeric(view_df['오차(mm)'], errors='coerce').fillna(-1)
         view_df = view_df.sort_values(by='sort', ascending=False).drop(columns=['sort'])
         
         st.dataframe(view_df, use_container_width=True, height=300)
 
 else:
-    st.error("데이터 파일(CSV/GLB)을 찾을 수 없습니다. 깃허브 저장소를 확인해 주세요.")
+    st.error("데이터 파일을 찾을 수 없습니다. GitHub 저장소의 파일명을 확인해주세요.")
