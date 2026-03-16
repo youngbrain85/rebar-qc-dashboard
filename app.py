@@ -1,140 +1,112 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
-import trimesh
+import base64
 import os
 
-# 1. 페이지 설정
+# 1. 페이지 기본 설정
 st.set_page_config(page_title="철근 시공 품질 대시보드", layout="wide")
 
 st.title("🏗️ 철근 시공 품질 검측 대시보드")
-st.info("Indiana State University - Built Environment | 박지수 교수 연구실")
+st.info("Indiana State University - Built Environment | PI: 박지수 교수")
 
 # 파일 경로
 csv_file = "final_qc_report_detailed.csv"
 glb_file = "construction_qc_model.glb"
 
-# 품질 상태별 색상 정의 (Hex)
-color_map_hex = {
-    'PASS': '#808080',     # 회색 (합격)
-    'CAUTION': '#228B22',  # 진한 녹색 (주의)
-    'ERROR': '#FF8C00',    # 진한 주황색 (오류)
-    'MISSING': '#FF0000'   # 빨간색 (누락)
-}
-
-if os.path.exists(csv_file) and os.path.exists(glb_file):
+if os.path.exists(csv_file):
     # 데이터 로드
     df = pd.read_csv(csv_file)
     status_counts = df['Status'].value_counts()
     
-    # [핵심] CSV의 ID와 상태를 매핑하는 딕셔너리 생성 (공백 제거)
-    df['Rebar_ID_clean'] = df['Rebar_ID'].astype(str).str.strip()
-    status_dict = dict(zip(df['Rebar_ID_clean'], df['Status']))
-    
-    # 2. 상단 지표
+    # 2. 상단 핵심 지표
+    total = len(df)
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("전체 철근", f"{len(df)}개")
+    col1.metric("전체 철근", f"{total}개")
     col2.metric("합격 (PASS)", f"{status_counts.get('PASS', 0)}개")
     issue_count = status_counts.get('CAUTION', 0) + status_counts.get('ERROR', 0)
     col3.metric("주의/오류", f"{issue_count}개", delta_color="inverse")
     col4.metric("누락 (MISSING)", f"{status_counts.get('MISSING', 0)}개")
 
-    # 3. 메인 레이아웃
+    # 3. 메인 레이아웃 (좌: 3D 모델 / 우: 차트 및 리스트)
     left_col, right_col = st.columns([6, 4])
 
     with left_col:
-        st.subheader("🌐 3차원 품질 검측 모델")
-        st.markdown("**[범례]** ⚪ 회색: 합격 | 🟢 녹색: 주의 | 🟠 주황: 오류 | 🔴 빨강: 누락")
+        st.subheader("🌐 3차원 품질 검측 모델 (Z-Up 축 교정)")
+        
+        # 색상 범례 가이드
+        st.markdown("""
+        **[색상 범례]**
+        - ⚪ **회색 (PASS)**: 정상 시공
+        - 🟢 **녹색 (CAUTION)**: 주의 (오차 20-30mm)
+        - 🟠 **주황 (ERROR)**: 오류 (오차 30mm 초과)
+        - 🔴 **빨강 (MISSING)**: 철근 누락
+        """)
 
-        try:
-            # GLB 파일 로드
-            scene = trimesh.load(glb_file)
-            fig_3d = go.Figure()
-
-            if isinstance(scene, trimesh.Scene):
-                for name, geom in scene.geometry.items():
-                    # 개체 이름 확인 (공백 제거)
-                    name_str = str(name).strip()
-                    
-                    # 1순위: CSV의 ID와 모델의 개체 이름이 일치하는지 확인하여 색상 결정
-                    status = status_dict.get(name_str, None)
-                    
-                    # 2순위: 이름 매칭 실패 시, 이름 안에 상태 키워드가 포함되어 있는지 확인
-                    if status is None:
-                        upper_name = name_str.upper()
-                        for s in color_map_hex.keys():
-                            if s in upper_name:
-                                status = s
-                                break
-                    
-                    # 최종 색상 (찾지 못하면 기본 회색)
-                    target_color = color_map_hex.get(status, '#808080')
-
-                    # Plotly Mesh3d 추가
-                    fig_3d.add_trace(go.Mesh3d(
-                        x=geom.vertices[:, 0],
-                        y=geom.vertices[:, 1],
-                        z=geom.vertices[:, 2],
-                        i=geom.faces[:, 0],
-                        j=geom.faces[:, 1],
-                        k=geom.faces[:, 2],
-                        color=target_color,
-                        name=name_str,
-                        opacity=1.0,
-                        flatshading=True,
-                        lighting=dict(ambient=0.5, diffuse=0.8, specular=0.1)
-                    ))
+        if os.path.exists(glb_file):
+            with open(glb_file, "rb") as f:
+                b64_glb = base64.b64encode(f.read()).decode()
             
-            # 초기 정렬 상태 유지 (Z-Up 설정 없이 초기 파일 데이터 중심)
-            fig_3d.update_layout(
-                scene=dict(
-                    xaxis=dict(title='X'),
-                    yaxis=dict(title='Y'),
-                    zaxis=dict(title='Z'),
-                    aspectmode='data'
-                ),
-                margin=dict(l=0, r=0, b=0, t=0), height=600
-            )
-            st.plotly_chart(fig_3d, use_container_width=True)
-            
-            # [디버깅] 이름이 안 맞을 경우 확인용
-            with st.expander("🔍 모델 내 개체 이름 확인 (색상이 안 보일 때 확인용)"):
-                st.write("모델 내 개체 이름 예시:", list(scene.geometry.keys())[:5])
-                st.write("CSV 내 철근 ID 예시:", list(status_dict.keys())[:5])
-            
-        except Exception as e:
-            st.error(f"3D 모델 시각화 중 오류 발생: {e}")
+            # [핵심] orientation="-90deg 0 0" 을 사용하여 
+            # GLB의 Y-up 표준을 건축의 Z-up 좌표계로 강제 전환합니다.
+            model_viewer_html = f"""
+            <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+            <model-viewer src="data:model/gltf-binary;base64,{b64_glb}" 
+                          style="width: 100%; height: 600px; background-color: #f0f2f6; border-radius: 15px;"
+                          camera-controls 
+                          touch-action="pan-y" 
+                          shadow-intensity="1"
+                          orientation="-90deg 0 0"
+                          exposure="1.0">
+            </model-viewer>
+            """
+            st.components.v1.html(model_viewer_html, height=620)
+        else:
+            st.warning("GLB 파일을 찾을 수 없습니다.")
 
     with right_col:
-        st.subheader("📊 품질 상태 분포")
+        st.subheader("📊 품질 상태별 분포")
         
-        # 가로 막대 그래프
-        bar_df = pd.DataFrame({
+        # 가로 막대 그래프 데이터 준비
+        bar_data = pd.DataFrame({
             '상태': ['합격', '주의', '오류', '누락'],
-            '개수': [status_counts.get('PASS', 0), status_counts.get('CAUTION', 0), 
-                   status_counts.get('ERROR', 0), status_counts.get('MISSING', 0)],
+            '개수': [
+                status_counts.get('PASS', 0),
+                status_counts.get('CAUTION', 0),
+                status_counts.get('ERROR', 0),
+                status_counts.get('MISSING', 0)
+            ],
             'Status': ['PASS', 'CAUTION', 'ERROR', 'MISSING']
         })
         
-        fig_bar = px.bar(bar_df, x='개수', y='상태', orientation='h',
+        fig_bar = px.bar(bar_data, x='개수', y='상태', orientation='h',
                          color='Status',
-                         color_discrete_map=color_map_hex,
+                         color_discrete_map={
+                             'PASS': '#808080', 
+                             'CAUTION': '#008000', 
+                             'ERROR': '#FFA500', 
+                             'MISSING': '#FF0000'
+                         },
                          text='개수')
         
-        fig_bar.update_layout(showlegend=False, height=250, margin=dict(l=10, r=10, t=10, b=10))
+        fig_bar.update_layout(
+            showlegend=False, 
+            height=250, 
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis_title="철근 개수",
+            yaxis_title=""
+        )
         st.plotly_chart(fig_bar, use_container_width=True)
 
-        st.subheader("📋 상세 검측 리스트")
-        view_df = df.copy()
-        # 표시용 컬럼명 변경
-        view_df = view_df[['Rebar_ID', 'Layer', 'Direction', 'Error_mm', 'Status']]
-        view_df.columns = ['철근 ID', '레이어', '방향', '오차(mm)', '상태']
-        # 오차순 정렬
-        view_df['sort_val'] = pd.to_numeric(view_df['오차(mm)'], errors='coerce').fillna(-1)
-        view_df = view_df.sort_values(by='sort_val', ascending=False).drop(columns=['sort_val'])
+        st.subheader("📋 상세 검측 목록")
         
-        st.dataframe(view_df, use_container_width=True, height=350)
+        # 데이터 정렬 및 한글화
+        df_view = df.copy()
+        df_view.columns = ['철근 ID', '레이어', '방향', '오차(mm)', '상태']
+        df_view['정렬용'] = pd.to_numeric(df_view['오차(mm)'], errors='coerce').fillna(-1)
+        df_view = df_view.sort_values(by='정렬용', ascending=False).drop(columns=['정렬용'])
+
+        st.dataframe(df_view, use_container_width=True, height=350)
 
 else:
-    st.error("데이터 파일을 찾을 수 없습니다. GitHub 저장소의 파일명을 확인해주세요.")
+    st.error("CSV 데이터를 찾을 수 없습니다.")
