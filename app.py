@@ -4,7 +4,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 import trimesh
 import os
-import numpy as np
 
 # 1. 페이지 설정
 st.set_page_config(page_title="철근 시공 품질 대시보드", layout="wide")
@@ -18,15 +17,20 @@ glb_file = "construction_qc_model.glb"
 
 # 품질 상태별 색상 정의 (Hex)
 color_map_hex = {
-    'PASS': '#808080',     # 회색
-    'CAUTION': '#008000',  # 녹색
-    'ERROR': '#FFA500',    # 주황색
-    'MISSING': '#FF0000'   # 빨간색
+    'PASS': '#808080',     # 회색 (합격)
+    'CAUTION': '#228B22',  # 진한 녹색 (주의)
+    'ERROR': '#FF8C00',    # 진한 주황색 (오류)
+    'MISSING': '#FF0000'   # 빨간색 (누락)
 }
 
 if os.path.exists(csv_file) and os.path.exists(glb_file):
+    # 데이터 로드
     df = pd.read_csv(csv_file)
     status_counts = df['Status'].value_counts()
+    
+    # [핵심] CSV의 ID와 상태를 매핑하는 딕셔너리 생성 (공백 제거)
+    df['Rebar_ID_clean'] = df['Rebar_ID'].astype(str).str.strip()
+    status_dict = dict(zip(df['Rebar_ID_clean'], df['Status']))
     
     # 2. 상단 지표
     col1, col2, col3, col4 = st.columns(4)
@@ -50,31 +54,22 @@ if os.path.exists(csv_file) and os.path.exists(glb_file):
 
             if isinstance(scene, trimesh.Scene):
                 for name, geom in scene.geometry.items():
-                    target_color = '#808080' # 기본값 회색
+                    # 개체 이름 확인 (공백 제거)
+                    name_str = str(name).strip()
                     
-                    # [오류 해결 포인트] 재질 이름을 안전하게 가져오기
-                    mat_name = ""
-                    if hasattr(geom.visual, 'material') and geom.visual.material is not None:
-                        # name이 None인 경우를 대비해 str()로 감싸고 처리
-                        raw_name = getattr(geom.visual.material, 'name', "")
-                        mat_name = str(raw_name if raw_name is not None else "").upper()
+                    # 1순위: CSV의 ID와 모델의 개체 이름이 일치하는지 확인하여 색상 결정
+                    status = status_dict.get(name_str, None)
                     
-                    # 1. 재질 이름으로 색상 매핑
-                    found_status = False
-                    for status in color_map_hex.keys():
-                        if status in mat_name:
-                            target_color = color_map_hex[status]
-                            found_status = True
-                            break
-                    
-                    # 2. 메시 자체의 이름(name)으로도 한 번 더 확인
-                    if not found_status:
-                        obj_name = str(name).upper()
-                        for status in color_map_hex.keys():
-                            if status in obj_name:
-                                target_color = color_map_hex[status]
-                                found_status = True
+                    # 2순위: 이름 매칭 실패 시, 이름 안에 상태 키워드가 포함되어 있는지 확인
+                    if status is None:
+                        upper_name = name_str.upper()
+                        for s in color_map_hex.keys():
+                            if s in upper_name:
+                                status = s
                                 break
+                    
+                    # 최종 색상 (찾지 못하면 기본 회색)
+                    target_color = color_map_hex.get(status, '#808080')
 
                     # Plotly Mesh3d 추가
                     fig_3d.add_trace(go.Mesh3d(
@@ -85,24 +80,28 @@ if os.path.exists(csv_file) and os.path.exists(glb_file):
                         j=geom.faces[:, 1],
                         k=geom.faces[:, 2],
                         color=target_color,
-                        name=name,
+                        name=name_str,
                         opacity=1.0,
                         flatshading=True,
-                        lighting=dict(ambient=0.6, diffuse=0.8, specular=0.2)
+                        lighting=dict(ambient=0.5, diffuse=0.8, specular=0.1)
                     ))
             
-            # Z-Up 좌표계 유지
+            # 초기 정렬 상태 유지 (Z-Up 설정 없이 초기 파일 데이터 중심)
             fig_3d.update_layout(
                 scene=dict(
-                    xaxis=dict(title='X (좌우)'),
-                    yaxis=dict(title='Y (앞뒤)'),
-                    zaxis=dict(title='Z (상하)'),
-                    aspectmode='data',
-                    camera=dict(up=dict(x=0, y=0, z=1), eye=dict(x=1.8, y=1.8, z=1.8))
+                    xaxis=dict(title='X'),
+                    yaxis=dict(title='Y'),
+                    zaxis=dict(title='Z'),
+                    aspectmode='data'
                 ),
                 margin=dict(l=0, r=0, b=0, t=0), height=600
             )
             st.plotly_chart(fig_3d, use_container_width=True)
+            
+            # [디버깅] 이름이 안 맞을 경우 확인용
+            with st.expander("🔍 모델 내 개체 이름 확인 (색상이 안 보일 때 확인용)"):
+                st.write("모델 내 개체 이름 예시:", list(scene.geometry.keys())[:5])
+                st.write("CSV 내 철근 ID 예시:", list(status_dict.keys())[:5])
             
         except Exception as e:
             st.error(f"3D 모델 시각화 중 오류 발생: {e}")
@@ -110,6 +109,7 @@ if os.path.exists(csv_file) and os.path.exists(glb_file):
     with right_col:
         st.subheader("📊 품질 상태 분포")
         
+        # 가로 막대 그래프
         bar_df = pd.DataFrame({
             '상태': ['합격', '주의', '오류', '누락'],
             '개수': [status_counts.get('PASS', 0), status_counts.get('CAUTION', 0), 
@@ -127,8 +127,10 @@ if os.path.exists(csv_file) and os.path.exists(glb_file):
 
         st.subheader("📋 상세 검측 리스트")
         view_df = df.copy()
+        # 표시용 컬럼명 변경
+        view_df = view_df[['Rebar_ID', 'Layer', 'Direction', 'Error_mm', 'Status']]
         view_df.columns = ['철근 ID', '레이어', '방향', '오차(mm)', '상태']
-        # 오차순 정렬 (숫자로 변환하여 정렬)
+        # 오차순 정렬
         view_df['sort_val'] = pd.to_numeric(view_df['오차(mm)'], errors='coerce').fillna(-1)
         view_df = view_df.sort_values(by='sort_val', ascending=False).drop(columns=['sort_val'])
         
