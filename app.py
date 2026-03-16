@@ -8,7 +8,7 @@ import os
 st.set_page_config(page_title="Rebar QC Analysis Dashboard", layout="wide")
 
 # [Professional Look] 불필요한 정보 삭제 및 깔끔한 헤더 적용
-st.title("🏗️ Rebar Construction Quality Integrated Dashboard")
+st.title("철근 검측 대시보드")
 st.markdown("---")
 
 # 파일 경로
