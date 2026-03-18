@@ -138,7 +138,7 @@ elif selected_tab == "스캔 데이터 분석":
             if os.path.exists(img): st.image(img, use_container_width=True)
 
 # ------------------------------------------------------------------
-# [TAB 3] 3D 모델링 (독립적 시각화로 분리)
+# [TAB 3] 3D 모델링 (개별 시각화 및 로딩 강화 버전)
 # ------------------------------------------------------------------
 elif selected_tab == "3D 모델링":
     st.markdown("<div class='section-title'>🏗️ 디지털 트윈 단계별 모델 분석</div>", unsafe_allow_html=True)
@@ -146,39 +146,68 @@ elif selected_tab == "3D 모델링":
     vec_raw_path = "rebar_vectors.parquet"
     vec_aligned_path = "rebar_vectors_aligned.parquet"
     
-    # 3.1 설계 모델 (BIM)
+    # 3.1 설계 모델 (BIM) - 시각화 강화
     st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
     st.subheader("1. BIM 설계 모델 (Design Mesh)")
     if os.path.exists(mesh_path):
         try:
             df_m = pd.read_parquet(mesh_path)
+            # 파일 내 mesh_json 컬럼 확인 
             m_data = df_m['mesh_json'].iloc[0]
-            if isinstance(m_data, str): m_data = json.loads(m_data)
+            
+            # JSON/Dict 처리 로직
+            if isinstance(m_data, str): 
+                m_data = json.loads(m_data)
+            
+            # 정점 및 면 데이터 추출 및 2D 구조화 강제 적용 
             v = np.array(m_data['vertices']).reshape(-1, 3)
             f = np.array(m_data['faces']).reshape(-1, 3)
-            fig_design = go.Figure(data=[go.Mesh3d(x=v[:,0], y=v[:,1], z=v[:,2], i=f[:,0], j=f[:,1], k=f[:,2], 
-                                               color='lightcyan', opacity=0.8, name='Design BIM')])
-            fig_design.update_layout(height=500, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data', bgcolor='white'))
-            st.plotly_chart(fig_design, use_container_width=True)
-        except Exception as e: st.error(f"설계 모델 로딩 오류: {e}")
-    else: st.info("💡 설계 모델 파일(design_mesh.parquet)이 없습니다.")
+            
+            if len(v) > 0:
+                # 가시성을 위해 색상을 'steelblue'로 변경하고 평면 셰이딩 적용
+                fig_design = go.Figure(data=[go.Mesh3d(
+                    x=v[:,0], y=v[:,1], z=v[:,2], 
+                    i=f[:,0], j=f[:,1], k=f[:,2], 
+                    color='steelblue',   # 더 잘 보이는 색상으로 변경
+                    opacity=1.0,         # 투명도 제거하여 확실히 보이게 설정
+                    flatshading=True,    # 면의 굴곡이 잘 보이도록 설정
+                    name='Design BIM'
+                )])
+                fig_design.update_layout(
+                    height=600, margin=dict(l=0,r=0,b=0,t=0),
+                    scene=dict(aspectmode='data', bgcolor='#f8fafc') # 배경색을 살짝 어둡게 변경
+                )
+                st.plotly_chart(fig_design, use_container_width=True)
+                st.success(f"✅ 설계 모델 로드 완료: 정점 {len(v)}개, 면 {len(f)}개")
+            else:
+                st.warning("⚠️ 설계 모델 데이터는 로드되었으나 정점 정보가 비어 있습니다.")
+                
+        except Exception as e:
+            st.error(f"❌ 설계 모델 로딩 중 오류 발생: {e}")
+    else:
+        st.info("💡 설계 모델 파일(design_mesh.parquet)이 없습니다.")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 3.2 시공 모델 (초기 스캔)
+    # 3.2 시공 모델 (초기 스캔 - start_x 등 컬럼명 반영) [cite: 3]
     st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
     st.subheader("2. 시공 모델 (Initial Scan Model)")
     if os.path.exists(vec_raw_path):
         df_v = pd.read_parquet(vec_raw_path)
         fig_raw_v = go.Figure()
         for _, r in df_v.iterrows():
-            fig_raw_v.add_trace(go.Scatter3d(x=[r['start_x'], r['end_x']], y=[r['start_y'], r['end_y']], z=[r['start_z'], r['end_z']], 
-                                         mode='lines', line=dict(width=6, color='gray'), name=r['rebar_id']))
-        fig_raw_v.update_layout(height=500, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data', bgcolor='white'), showlegend=False)
+            fig_raw_v.add_trace(go.Scatter3d(
+                x=[r['start_x'], r['end_x']], 
+                y=[r['start_y'], r['end_y']], 
+                z=[r['start_z'], r['end_z']], 
+                mode='lines', line=dict(width=6, color='gray'), showlegend=False
+            ))
+        fig_raw_v.update_layout(height=500, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data', bgcolor='white'))
         st.plotly_chart(fig_raw_v, use_container_width=True)
-    else: st.info("💡 시공 초기 모델 파일(rebar_vectors.parquet)이 없습니다.")
+    else:
+        st.info("💡 시공 초기 모델 파일(rebar_vectors.parquet)이 없습니다.")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 3.3 시공/설계 정합 모델 (최종)
+    # 3.3 시공/설계 정합 모델 (최종 - p1_x 등 컬럼명 반영) [cite: 1]
     st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
     st.subheader("3. 시공/설계 정합 모델 (Aligned Digital Twin)")
     if os.path.exists(vec_aligned_path):
@@ -186,12 +215,15 @@ elif selected_tab == "3D 모델링":
         c_map = {'상면_V': 'red', '상면_H': 'orange', '하면_V': 'blue', '하면_H': 'cyan'}
         fig_aligned_v = go.Figure()
         for _, r in df_a.iterrows():
-            fig_aligned_v.add_trace(go.Scatter3d(x=[r['p1_x'], r['p2_x']], y=[r['p1_y'], r['p2_y']], z=[r['p1_z'], r['p2_z']], 
-                                             mode='lines', line=dict(width=10, color=c_map.get(r['label'], 'green')), name=r['rebar_id']))
+            fig_aligned_v.add_trace(go.Scatter3d(
+                x=[r['p1_x'], r['p2_x']], 
+                y=[r['p1_y'], r['p2_y']], 
+                z=[r['p1_z'], r['p2_z']], 
+                mode='lines', line=dict(width=10, color=c_map.get(r['label'], 'green')),
+                name=r['rebar_id']
+            ))
         fig_aligned_v.update_layout(height=500, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data', bgcolor='white'), showlegend=False)
         st.plotly_chart(fig_aligned_v, use_container_width=True)
-    else: st.info("💡 정합 모델 파일(rebar_vectors_aligned.parquet)이 없습니다.")
+    else:
+        st.info("💡 정합 모델 파일(rebar_vectors_aligned.parquet)이 없습니다.")
     st.markdown("</div>", unsafe_allow_html=True)
-
-else:
-    st.markdown("<div style='height: 500px; display: flex; align-items: center; justify-content: center; border: 2px dashed #e2e8f0; border-radius: 20px; color: #94a3b8;'><h1>🏗️ 현장 협업 모듈 준비 중</h1></div>", unsafe_allow_html=True)
