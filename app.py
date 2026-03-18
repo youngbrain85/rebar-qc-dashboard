@@ -12,9 +12,8 @@ st.set_page_config(
 )
 
 # [LH Enterprise Dashboard CSS - White Version]
-# 1. 배경을 화이트(#ffffff)로 변경하고 글자색을 다크(#1e293b)로 조정
-# 2. 전반적인 폰트 크기 상향 조정
-# 3. LH Green & Blue 포인트 유지
+# 1. 상단 여백 및 헤더 간격 최소화 (Single-screen 최적화)
+# 2. 3D 뷰어와 테이블 하단 높이 정렬
 st.markdown("""
     <style>
     /* 상단 Streamlit 헤더/메뉴 제거 */
@@ -31,25 +30,25 @@ st.markdown("""
         font-family: 'Inter', 'Noto Sans KR', sans-serif;
     }
 
-    /* 메인 컨테이너 여백 최적화 */
+    /* 메인 컨테이너 상단 여백 최소화 */
     .main .block-container {
-        padding-top: 1rem !important;
+        padding-top: 0.5rem !important;
         padding-bottom: 0rem !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
     }
 
-    /* LH 브랜드 헤더 스타일 */
+    /* LH 브랜드 헤더 스타일 (간격 축소) */
     .lh-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
-        padding-bottom: 0.8rem;
-        border-bottom: 3px solid #009944; /* LH Green 포인트 강화 */
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 3px solid #009944;
     }
     .lh-logo-text {
-        font-size: 2rem; /* 크기 상향 */
+        font-size: 1.8rem;
         font-weight: 900;
         letter-spacing: -1px;
         display: flex;
@@ -58,47 +57,47 @@ st.markdown("""
     .lh-green { color: #009944; }
     .lh-blue { color: #0055a6; }
     .project-name {
-        font-size: 1.2rem; /* 크기 상향 */
+        font-size: 1.1rem;
         font-weight: 500;
         color: #64748b;
-        margin-left: 15px;
+        margin-left: 12px;
     }
     .system-status {
-        font-size: 0.8rem; /* 크기 상향 */
+        font-size: 0.75rem;
         background: rgba(0, 153, 68, 0.1);
         color: #009944;
         border: 1px solid #009944;
-        padding: 5px 15px;
+        padding: 3px 12px;
         border-radius: 99px;
         font-weight: 700;
     }
 
-    /* 지표 카드 (White Style) */
+    /* 지표 카드 (압축형) */
     div[data-testid="stMetric"] {
         background-color: #f8fafc !important;
-        padding: 20px 25px !important;
-        border-radius: 12px !important;
+        padding: 12px 20px !important;
+        border-radius: 10px !important;
         border: 1px solid #e2e8f0 !important;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
     }
     div[data-testid="stMetricLabel"] {
-        font-size: 1rem !important; /* 크기 상향 */
+        font-size: 0.9rem !important;
         color: #64748b !important;
         font-weight: 600 !important;
     }
     div[data-testid="stMetricValue"] {
-        font-size: 2.4rem !important; /* 크기 상향 */
+        font-size: 2rem !important;
         font-weight: 800 !important;
         color: #0f172a !important;
     }
 
     /* 범례 박스 스타일 */
     .legend-box {
-        font-size: 0.85rem; /* 크기 상향 */
+        font-size: 0.8rem;
         color: #475569;
         background: #f8fafc;
-        padding: 15px;
-        border-radius: 12px;
+        padding: 10px 15px;
+        border-radius: 10px;
         border: 1px solid #e2e8f0;
         height: 100%;
         display: flex;
@@ -109,25 +108,20 @@ st.markdown("""
     /* 테이블(DataFrame) 스타일링 */
     .stDataFrame {
         border: 1px solid #e2e8f0;
-        border-radius: 12px;
+        border-radius: 10px;
         overflow: hidden;
     }
     
     /* 섹션 제목 스타일 */
     .section-title {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         font-weight: 700;
-        margin-bottom: 12px;
+        margin-top: 0.5rem;
+        margin-bottom: 8px;
         color: #0f172a;
         border-left: 5px solid #009944;
-        padding-left: 12px;
+        padding-left: 10px;
     }
-    
-    /* 스크롤바 커스터마이징 (화이트 테마용) */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -136,7 +130,7 @@ st.markdown("""
     <div class="lh-header">
         <div class="lh-logo-text">
             <span class="lh-blue">L</span><span class="lh-green">H</span>
-            <span style="font-size:1.6rem; color:#0f172a; margin-left:10px; font-weight:800;">한국토지주택공사</span>
+            <span style="font-size:1.5rem; color:#0f172a; margin-left:8px; font-weight:800;">한국토지주택공사</span>
             <span class="project-name">| 철근 배근 시공 품질 자동 검측 엔진</span>
         </div>
         <div class="system-status">● ANALYSIS SYSTEM ONLINE</div>
@@ -161,16 +155,16 @@ if os.path.exists(csv_file):
     with m5:
         st.markdown("""
             <div class="legend-box">
-                <div style="font-weight: 800; color: #009944; margin-bottom: 5px; font-size: 0.95rem;">LH 시공 품질 가이드라인</div>
-                <div style="line-height: 1.6; color: #475569;">
-                    ⚪ <b style="color:#0f172a">PASS</b>: <20mm (정상 시공)<br>
-                    🟢 <b style="color:#009944">CAUTION</b>: 20-30mm (주의 필요)<br>
-                    🟠 <b style="color:#f59e0b">ERROR</b>: >30mm (재시공 권고)
+                <div style="font-weight: 800; color: #009944; margin-bottom: 3px; font-size: 0.85rem;">LH 시공 품질 가이드라인</div>
+                <div style="line-height: 1.5; color: #475569;">
+                    ⚪ <b style="color:#0f172a">PASS</b>: <20mm | 🟢 <b style="color:#009944">CAUTION</b>: 20-30mm<br>
+                    🟠 <b style="color:#f59e0b">ERROR</b>: >30mm | 🔴 <b style="color:#ef4444">MISSING</b>: 미탐지
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-    # 3. 메인 인터페이스
+    # 3. 메인 인터페이스 (높이 밸런스 조정)
+    # 전체 뷰포트 높이에 맞추기 위해 높이 값을 정밀 조정함
     left_col, right_col = st.columns([6, 4])
 
     with left_col:
@@ -178,11 +172,11 @@ if os.path.exists(csv_file):
             with open(glb_file, "rb") as f:
                 b64_glb = base64.b64encode(f.read()).decode()
             
-            # 3D 모델 뷰어 (화이트 배경 최적화)
+            # 3D 모델 뷰어 높이 고정
             model_viewer_html = f"""
             <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
             <model-viewer src="data:model/gltf-binary;base64,{b64_glb}" 
-                          style="width: 100%; height: 650px; background-color: #ffffff; border-radius: 15px; border: 1px solid #e2e8f0;"
+                          style="width: 100%; height: 620px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;"
                           camera-controls 
                           touch-action="pan-y" 
                           shadow-intensity="1"
@@ -191,10 +185,10 @@ if os.path.exists(csv_file):
                           environment-image="neutral">
             </model-viewer>
             """
-            st.components.v1.html(model_viewer_html, height=660)
+            st.components.v1.html(model_viewer_html, height=630)
 
     with right_col:
-        # 화이트 테마에 맞춘 통계 차트
+        # 통계 차트 영역
         bar_data = pd.DataFrame({
             '상태': ['Pass', 'Caution', 'Error', 'Missing'],
             'Count': [status_counts.get('PASS', 0), status_counts.get('CAUTION', 0), 
@@ -213,16 +207,16 @@ if os.path.exists(csv_file):
                          text='Count')
         
         fig_bar.update_layout(
-            showlegend=False, height=240, margin=dict(l=0, r=20, t=10, b=10),
+            showlegend=False, height=210, margin=dict(l=0, r=20, t=5, b=5),
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             font_color="#475569", xaxis_title="", yaxis_title="",
             xaxis=dict(showgrid=True, gridcolor='#f1f5f9'), 
             yaxis=dict(showgrid=False),
-            font=dict(size=13)
+            font=dict(size=12)
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
-        # 개별 상세 검측 로그
+        # 개별 상세 검측 로그 (높이 축소하여 좌측 3D 뷰어 하단과 맞춤)
         st.markdown("<div class='section-title'>📋 개별 철근 검측 상세 데이터</div>", unsafe_allow_html=True)
         
         df_view = df[['Rebar_ID', 'Error_mm', 'Status', 'Layer']].copy()
@@ -232,8 +226,8 @@ if os.path.exists(csv_file):
         df_view['temp_sort'] = pd.to_numeric(df_view['오차(mm)'], errors='coerce').fillna(-1)
         df_view = df_view.sort_values(by='temp_sort', ascending=False).drop(columns=['temp_sort'])
 
-        # Streamlit Native DataFrame (White Theme)
-        st.dataframe(df_view, use_container_width=True, height=380)
+        # 테이블 높이를 340으로 조정하여 좌측 3D 뷰어와 하단 정렬 맞춤
+        st.dataframe(df_view, use_container_width=True, height=340)
 
 else:
     st.error("데이터 파일을 찾을 수 없습니다. (final_qc_report_detailed.csv)")
