@@ -149,6 +149,7 @@ elif selected_tab == "스캔 데이터 분석":
             df_seg = pd.read_parquet(seg_path)
             # rebar_id별로 다른 색상을 입혀 시각화
             fig_seg = px.scatter_3d(df_seg, x='x', y='y', z='z', color='rebar_id', size_max=0.5, opacity=0.8)
+            fig_seg.update_traces(marker=dict(size=0.7)) # 점의 크기를 0.8 정도로 작게 설정
             fig_seg.update_layout(height=600, margin=dict(l=0, r=0, b=0, t=0), scene=dict(aspectmode='data'))
             st.plotly_chart(fig_seg, use_container_width=True)
         else:
