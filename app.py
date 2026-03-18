@@ -63,7 +63,7 @@ selected_tab = st.pills("", tabs, selection_mode="single", default="철근 시�
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------
-# [TAB 1] 철근 시공오차 분석
+# [TAB 1] 철근 시공오차 분석 (고정)
 # ------------------------------------------------------------------
 if selected_tab == "철근 시공오차 분석":
     csv_file = "final_qc_report_detailed.csv"
@@ -72,15 +72,12 @@ if selected_tab == "철근 시공오차 분석":
     if os.path.exists(csv_file):
         df = pd.read_csv(csv_file)
         status_counts = df['Status'].value_counts()
-        
         m1, m2, m3, m4, m5 = st.columns([1, 1, 1, 1, 1.5])
         m1.metric("전체 검측", f"{len(df)}EA")
         m2.metric("정상 (PASS)", f"{status_counts.get('PASS', 0)}")
         m3.metric("주의/오류", f"{status_counts.get('CAUTION', 0) + status_counts.get('ERROR', 0)}")
         m4.metric("미탐지", f"{status_counts.get('MISSING', 0)}")
-        with m5:
-            st.markdown('<div style="font-size:0.85rem; padding:10px; border:2px solid #009944; border-radius:10px; background:white;"><b>LH 품질 기준:</b><br>⚪ PASS < 20mm | 🟢 CAUTION < 30mm | 🟠 ERROR > 30mm</div>', unsafe_allow_html=True)
-        
+        with m5: st.markdown('<div style="font-size:0.85rem; padding:10px; border:2px solid #009944; border-radius:10px; background:white;"><b>품질 기준:</b> PASS < 20mm | ERROR > 30mm</div>', unsafe_allow_html=True)
         left_col, right_col = st.columns([6, 4])
         with left_col:
             st.markdown("<div class='section-title'>🏗️ 검측 결과 3D 하이라이트</div>", unsafe_allow_html=True)
@@ -94,7 +91,6 @@ if selected_tab == "철근 시공오차 분석":
                                   orientation="-90deg -90deg -90deg"
                                   exposure="1.2" environment-image="neutral"></model-viewer>
                 """, height=610)
-        
         with right_col:
             st.markdown("<div class='section-title'>📊 시공 품질 상태 분포</div>", unsafe_allow_html=True)
             bar_data = pd.DataFrame({
@@ -103,16 +99,14 @@ if selected_tab == "철근 시공오차 분석":
                 'Color': ['PASS', 'CAUTION', 'ERROR', 'MISSING']
             })
             fig_bar = px.bar(bar_data, x='개수', y='상태', orientation='h', color='Color',
-                             color_discrete_map={'PASS': '#94a3b8', 'CAUTION': '#009944', 'ERROR': '#f59e0b', 'MISSING': '#ef4444'},
-                             text='개수')
+                             color_discrete_map={'PASS': '#94a3b8', 'CAUTION': '#009944', 'ERROR': '#f59e0b', 'MISSING': '#ef4444'}, text='개수')
             fig_bar.update_layout(showlegend=False, height=250, margin=dict(l=0,r=10,t=10,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_bar, use_container_width=True)
-            
             st.markdown("<div class='section-title'>📋 개별 검측 상세 데이터</div>", unsafe_allow_html=True)
             st.dataframe(df[['Rebar_ID', 'Error_mm', 'Status', 'Layer']], use_container_width=True, height=280)
 
 # ------------------------------------------------------------------
-# [TAB 2] 스캔 데이터 분석
+# [TAB 2] 스캔 데이터 분석 (고정)
 # ------------------------------------------------------------------
 elif selected_tab == "스캔 데이터 분석":
     st.markdown("<div class='section-title'>🔍 포인트 클라우드 분석 및 피크 탐지</div>", unsafe_allow_html=True)
@@ -144,59 +138,59 @@ elif selected_tab == "스캔 데이터 분석":
             if os.path.exists(img): st.image(img, use_container_width=True)
 
 # ------------------------------------------------------------------
-# [TAB 3] 3D 모델링 (정합 시각화 및 오류 방어)
+# [TAB 3] 3D 모델링 (독립적 시각화로 분리)
 # ------------------------------------------------------------------
 elif selected_tab == "3D 모델링":
-    st.markdown("<div class='section-title'>🏗️ 설계-시공 통합 디지털 트윈 모델 분석</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>🏗️ 디지털 트윈 단계별 모델 분석</div>", unsafe_allow_html=True)
     mesh_path = "design_mesh.parquet"
     vec_raw_path = "rebar_vectors.parquet"
     vec_aligned_path = "rebar_vectors_aligned.parquet"
     
+    # 3.1 설계 모델 (BIM)
     st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
-    l_col, r_col = st.columns([8, 2])
-    with r_col:
-        st.subheader("🛠️ 시각화 레이어")
-        ly_design = st.checkbox("BIM 설계 모델", value=True)
-        ly_raw = st.checkbox("시공 모델 (초기 Scan)", value=False)
-        ly_aligned = st.checkbox("시공/설계 정합 모델", value=True)
-        st.markdown("---")
-        st.info("💡 **정합 모델**은 설계 좌표계에 맞춰 보정된 결과입니다.")
+    st.subheader("1. BIM 설계 모델 (Design Mesh)")
+    if os.path.exists(mesh_path):
+        try:
+            df_m = pd.read_parquet(mesh_path)
+            m_data = df_m['mesh_json'].iloc[0]
+            if isinstance(m_data, str): m_data = json.loads(m_data)
+            v = np.array(m_data['vertices']).reshape(-1, 3)
+            f = np.array(m_data['faces']).reshape(-1, 3)
+            fig_design = go.Figure(data=[go.Mesh3d(x=v[:,0], y=v[:,1], z=v[:,2], i=f[:,0], j=f[:,1], k=f[:,2], 
+                                               color='lightcyan', opacity=0.8, name='Design BIM')])
+            fig_design.update_layout(height=500, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data', bgcolor='white'))
+            st.plotly_chart(fig_design, use_container_width=True)
+        except Exception as e: st.error(f"설계 모델 로딩 오류: {e}")
+    else: st.info("💡 설계 모델 파일(design_mesh.parquet)이 없습니다.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    with l_col:
-        fig_3d = go.Figure()
-        
-        # [A] 설계 모델 복원 (design_mesh.parquet)
-        if ly_design and os.path.exists(mesh_path):
-            try:
-                df_m = pd.read_parquet(mesh_path)
-                m_data = df_m['mesh_json'].iloc[0]
-                if isinstance(m_data, str): m_data = json.loads(m_data)
-                
-                v = np.array(m_data['vertices']).reshape(-1, 3)
-                f = np.array(m_data['faces']).reshape(-1, 3)
-                
-                fig_3d.add_trace(go.Mesh3d(x=v[:,0], y=v[:,1], z=v[:,2], i=f[:,0], j=f[:,1], k=f[:,2], 
-                                          color='lightcyan', opacity=0.3, name='Design BIM'))
-            except Exception as e:
-                st.error(f"설계 모델 로딩 오류: {e}")
+    # 3.2 시공 모델 (초기 스캔)
+    st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
+    st.subheader("2. 시공 모델 (Initial Scan Model)")
+    if os.path.exists(vec_raw_path):
+        df_v = pd.read_parquet(vec_raw_path)
+        fig_raw_v = go.Figure()
+        for _, r in df_v.iterrows():
+            fig_raw_v.add_trace(go.Scatter3d(x=[r['start_x'], r['end_x']], y=[r['start_y'], r['end_y']], z=[r['start_z'], r['end_z']], 
+                                         mode='lines', line=dict(width=6, color='gray'), name=r['rebar_id']))
+        fig_raw_v.update_layout(height=500, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data', bgcolor='white'), showlegend=False)
+        st.plotly_chart(fig_raw_v, use_container_width=True)
+    else: st.info("💡 시공 초기 모델 파일(rebar_vectors.parquet)이 없습니다.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-        # [B] 시공 모델 (rebar_vectors.parquet)
-        if ly_raw and os.path.exists(vec_raw_path):
-            df_v = pd.read_parquet(vec_raw_path)
-            for _, r in df_v.iterrows():
-                fig_3d.add_trace(go.Scatter3d(x=[r['start_x'], r['end_x']], y=[r['start_y'], r['end_y']], z=[r['start_z'], r['end_z']], 
-                                             mode='lines', line=dict(width=5, color='gray'), opacity=0.4, name='Initial Scan'))
-
-        # [C] 시공/설계 정합 모델 (rebar_vectors_aligned.parquet)
-        if ly_aligned and os.path.exists(vec_aligned_path):
-            df_a = pd.read_parquet(vec_aligned_path)
-            c_map = {'상면_V': 'red', '상면_H': 'orange', '하면_V': 'blue', '하면_H': 'cyan'}
-            for _, r in df_a.iterrows():
-                fig_3d.add_trace(go.Scatter3d(x=[r['p1_x'], r['p2_x']], y=[r['p1_y'], r['p2_y']], z=[r['p1_z'], r['p2_z']], 
+    # 3.3 시공/설계 정합 모델 (최종)
+    st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
+    st.subheader("3. 시공/설계 정합 모델 (Aligned Digital Twin)")
+    if os.path.exists(vec_aligned_path):
+        df_a = pd.read_parquet(vec_aligned_path)
+        c_map = {'상면_V': 'red', '상면_H': 'orange', '하면_V': 'blue', '하면_H': 'cyan'}
+        fig_aligned_v = go.Figure()
+        for _, r in df_a.iterrows():
+            fig_aligned_v.add_trace(go.Scatter3d(x=[r['p1_x'], r['p2_x']], y=[r['p1_y'], r['p2_y']], z=[r['p1_z'], r['p2_z']], 
                                              mode='lines', line=dict(width=10, color=c_map.get(r['label'], 'green')), name=r['rebar_id']))
-
-        fig_3d.update_layout(height=750, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data', bgcolor='white'))
-        st.plotly_chart(fig_3d, use_container_width=True)
+        fig_aligned_v.update_layout(height=500, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data', bgcolor='white'), showlegend=False)
+        st.plotly_chart(fig_aligned_v, use_container_width=True)
+    else: st.info("💡 정합 모델 파일(rebar_vectors_aligned.parquet)이 없습니다.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 else:
