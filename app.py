@@ -21,12 +21,12 @@ def get_base64_of_bin_file(bin_file):
         return base64.b64encode(data).decode()
     return ""
 
-# 로고 설정
+# 로고 설정 (lh_logo.png)
 lh_logo_path = "lh_logo.png"
 logo_b64 = get_base64_of_bin_file(lh_logo_path)
 logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="lh-logo-img">' if logo_b64 else '<span style="font-size:1.5rem; font-weight:900;"><span style="color:#0055a6;">L</span><span style="color:#009944;">H</span></span>'
 
-# [LH Enterprise Dashboard CSS - 콤팩트 헤더 버전]
+# [LH Enterprise Dashboard CSS - 콤팩트 디자인]
 st.markdown(f"""
     <style>
     header {{visibility: hidden !important;}}
@@ -82,7 +82,7 @@ if selected_tab == "철근 시공오차 분석":
         with m5:
             st.markdown('<div style="font-size:0.85rem; padding:10px; border:2px solid #009944; border-radius:10px;"><b>품질 기준:</b> PASS < 20mm | ERROR > 30mm</div>', unsafe_allow_html=True)
         
-        st.markdown("<div class='section-title'>📋 검측 데이터 상세</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>📋 검측 데이터 상세 내역</div>", unsafe_allow_html=True)
         st.dataframe(df[['Rebar_ID', 'Error_mm', 'Status', 'Layer']], use_container_width=True, height=450)
     else:
         st.warning("'final_qc_report_detailed.csv' 파일이 필요합니다.")
@@ -91,13 +91,13 @@ if selected_tab == "철근 시공오차 분석":
 # [TAB 2] 스캔 데이터 분석
 # ------------------------------------------------------------------
 elif selected_tab == "스캔 데이터 분석":
-    st.markdown("<div class='section-title'>🔍 포인트 클라우드 분석 및 피크 탐지</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>🔍 포인트 클라우드 시각화 및 분석</div>", unsafe_allow_html=True)
     
     raw_p, seg_p = "raw_cloud.parquet", "segmented_rebars.parquet"
     c1, c2 = st.columns(2)
     
     with c1:
-        st.subheader("1. 원본 데이터 (Raw)")
+        st.subheader("1. 원본 스캔 데이터 (Raw)")
         if os.path.exists(raw_p):
             df_raw = pd.read_parquet(raw_p)
             fig_raw = go.Figure(data=[go.Scatter3d(x=df_raw['x'], y=df_raw['y'], z=df_raw['z'], mode='markers', marker=dict(size=0.8, color='#94a3b8', opacity=0.4))])
@@ -105,7 +105,7 @@ elif selected_tab == "스캔 데이터 분석":
             st.plotly_chart(fig_raw, use_container_width=True)
             
     with c2:
-        st.subheader("2. 객체 분할 (Segmented)")
+        st.subheader("2. 개별 객체 분할 결과 (Segmented)")
         if os.path.exists(seg_p):
             df_seg = pd.read_parquet(seg_p)
             fig_seg = px.scatter_3d(df_seg, x='x', y='y', z='z', color='rebar_id', opacity=0.8)
@@ -114,7 +114,7 @@ elif selected_tab == "스캔 데이터 분석":
             st.plotly_chart(fig_seg, use_container_width=True)
 
     st.markdown("---")
-    st.subheader("3. 포인트 밀도 분석 로그 (Peak Finding)")
+    st.subheader("3. 레이어별 피크 탐지 분석 로그 (Peak Finding)")
     ic1, ic2 = st.columns(2)
     with ic1:
         for img in ["top v_x.png", "bottom v_x.png"]:
@@ -124,7 +124,7 @@ elif selected_tab == "스캔 데이터 분석":
             if os.path.exists(img): st.image(img, use_container_width=True)
 
 # ------------------------------------------------------------------
-# [TAB 3] 3D 모델링 (디지털 트윈 정합)
+# [TAB 3] 3D 모델링 (설계 vs 시공 정합)
 # ------------------------------------------------------------------
 elif selected_tab == "3D 모델링":
     st.markdown("<div class='section-title'>🏗️ 설계-시공 통합 디지털 트윈 모델</div>", unsafe_allow_html=True)
@@ -134,29 +134,28 @@ elif selected_tab == "3D 모델링":
     vec_aligned_path = "rebar_vectors_aligned.parquet"
     
     st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
-    l_col, r_col = st.columns([7.5, 2.5])
+    l_col, r_col = st.columns([7.8, 2.2])
     
     with r_col:
-        st.subheader("🛠️ 시각화 설정")
+        st.subheader("🛠️ 레이어 설정")
         ly_design = st.checkbox("BIM 설계 모델 (Mesh)", value=True)
         ly_raw = st.checkbox("정렬 전 시공 모델 (Scan)", value=False)
         ly_aligned = st.checkbox("정렬 후 시공 모델 (Aligned)", value=True)
         
+        st.markdown("---")
+        st.subheader("📊 정합 정밀도")
         if os.path.exists(vec_aligned_path):
             df_a = pd.read_parquet(vec_aligned_path)
-            st.markdown("---")
-            st.metric("ICP Fitness", f"{df_a['fitness'].iloc[0]:.4f}")
-            st.metric("Mean RMSE", f"{df_a['rmse'].iloc[0]:.2f} mm")
-            
-        if os.path.exists("icp_process.gif"):
-            st.markdown("---")
-            st.subheader("🎬 정합 프로세스")
-            st.image("icp_process.gif")
+            # ICP 지표 표시
+            st.metric("Fitness (일치도)", f"{df_a['fitness'].iloc[0]:.4f}")
+            st.metric("RMSE (정밀도)", f"{df_a['rmse'].iloc[0]:.2f} mm")
+        else:
+            st.info("정합 데이터가 없습니다.")
 
     with l_col:
         fig_3d = go.Figure()
         
-        # [A] 설계 모델
+        # [A] 설계 모델 복원
         if ly_design and os.path.exists(mesh_path):
             df_m = pd.read_parquet(mesh_path)
             m_data = df_m['mesh_json'].iloc[0] if 'mesh_json' in df_m.columns else df_m['data'].iloc[0]
