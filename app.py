@@ -4,30 +4,69 @@ import plotly.express as px
 import base64
 import os
 
-# 1. 페이지 레이아웃 및 스타일 설정
-st.set_page_config(page_title="Rebar QC Analysis Platform", layout="wide")
+# 1. 페이지 설정 및 고정 레이아웃 최적화
+st.set_page_config(
+    page_title="Rebar QC Analysis Platform", 
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-# [Professional Styling] 커스텀 CSS 적용
+# [Professional Single-Screen CSS] 
+# 상단 여백 제거 및 컴포넌트 간격 최소화
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; }
-    .stMetric { 
-        background-color: #ffffff; padding: 20px; border-radius: 10px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #e9ecef;
+    /* 메인 컨테이너 여백 최소화 */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
     }
-    .css-1r6slb0 { background-color: white; padding: 2rem; border-radius: 1rem; }
-    h1 { color: #1e293b; font-weight: 800; }
-    h3 { color: #334155; border-bottom: 2px solid #3b82f6; padding-bottom: 5px; }
-    .legend-box {
-        padding: 15px; background-color: #ffffff; border-radius: 8px;
-        border-left: 5px solid #3b82f6; margin-bottom: 20px; font-size: 0.9rem;
+    /* 헤더 및 위젯 간격 조절 */
+    div[data-testid="stVerticalBlock"] > div {
+        gap: 0.5rem !important;
+    }
+    /* 배경색 및 폰트 설정 */
+    .stApp {
+        background-color: #0f172a;
+        color: #f8fafc;
+    }
+    /* 지표 카드 스타일 */
+    div[data-testid="stMetric"] {
+        background-color: #1e293b;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    /* 제목 스타일 */
+    .main-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #38bdf8;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .status-tag {
+        font-size: 0.7rem;
+        background: #0ea5e9;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 400;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 헤더 섹션
-st.title("🏗️ 철근 검측 대시보드")
-st.markdown("---")
+# 헤더 섹션 (압축형)
+st.markdown("""
+    <div class="main-title">
+        <div>🏗️ Rebar Quality Control Engine <span style="color:#64748b; font-size:1rem; font-weight:400; margin-left:10px;">| Analysis Dashboard</span></div>
+        <div class="status-tag">SYSTEM ONLINE</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # 파일 경로
 csv_file = "final_qc_report_detailed.csv"
@@ -37,91 +76,78 @@ if os.path.exists(csv_file):
     df = pd.read_csv(csv_file)
     status_counts = df['Status'].value_counts()
     
-    # 2. 상단 핵심 지표 (Metric Cards)
-    total = len(df)
-    m1, m2, m3, m4 = st.columns(4)
-    with m1: st.metric("Total Elements", f"{total}")
-    with m2: st.metric("Pass (Normal)", f"{status_counts.get('PASS', 0)}", "Verified", delta_color="normal")
-    with m3: 
-        caution_error = status_counts.get('CAUTION', 0) + status_counts.get('ERROR', 0)
-        st.metric("Total Issues", f"{caution_error}", f"-{caution_error}", delta_color="inverse")
-    with m4: st.metric("Missing", f"{status_counts.get('MISSING', 0)}", "Critical", delta_color="inverse")
-
-    st.write("") # 간격 조절
-
-    # 3. 메인 분석 섹션
-    left_col, right_col = st.columns([6, 4])
-
-    with left_col:
-        st.subheader("🌐 3D Inspection Digital Twin")
-        
-        # 색상 범례 가이드 (카드 스타일)
+    # 2. 상단 지표 영역 (가로로 얇게 배치)
+    m1, m2, m3, m4, m5 = st.columns([1, 1, 1, 1, 1.5])
+    with m1: st.metric("Total Rebars", f"{len(df)}")
+    with m2: st.metric("Normal (PASS)", f"{status_counts.get('PASS', 0)}")
+    with m3: st.metric("Critical Errors", f"{status_counts.get('ERROR', 0)}", delta_color="inverse")
+    with m4: st.metric("Missing", f"{status_counts.get('MISSING', 0)}", delta_color="inverse")
+    
+    # 범례 가이드 (Metrics 옆 공간 활용)
+    with m5:
         st.markdown("""
-        <div class="legend-box">
-            <b>검측 상태 범례:</b><br>
-            ⚪ <b>PASS</b>: 시공 오차 20mm 미만 | 🟢 <b>CAUTION</b>: 주의 (20-30mm) | 
-            🟠 <b>ERROR</b>: 오시공 (30mm 초과) | 🔴 <b>MISSING</b>: 미시공/누락
+        <div style="font-size: 0.7rem; color: #94a3b8; background: #1e293b; padding: 10px; border-radius: 8px; border: 1px solid #334155;">
+            <b>Inspection Legend:</b><br>
+            ⚪ PASS (<20mm) | 🟢 CAUTION (20-30mm) | 🟠 ERROR (>30mm) | 🔴 MISSING
         </div>
         """, unsafe_allow_html=True)
 
+    # 3. 메인 분석 섹션 (높이 고정으로 스크롤 방지)
+    left_col, right_col = st.columns([6, 4])
+
+    with left_col:
         if os.path.exists(glb_file):
             with open(glb_file, "rb") as f:
                 b64_glb = base64.b64encode(f.read()).decode()
             
-            # [교수님 요청 사항: 축 회전 로직 상세 주석]
-            # orientation="-90deg -90deg -90deg"의 의미:
-            # 1. 첫 번째 (-90deg, X축): BIM/CAD의 Z-Up 좌표계를 웹의 Y-Up 환경에 맞추기 위해 모델을 뒤로 90도 눕힙니다.
-            # 2. 두 번째 (-90deg, Y축): 위아래를 관통하는 축을 기준으로 시계 방향으로 90도 회전시킵니다. (평면도상 회전)
-            # 3. 세 번째 (-90deg, Z축): 앞뒤를 관통하는 축을 기준으로 시계 방향으로 90도 회전시킵니다. (정면도상 회전)
-            
+            # [최적화] height를 650px 정도로 조절하여 1080p 화면에서 잘리지 않게 함
             model_viewer_html = f"""
             <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
             <model-viewer src="data:model/gltf-binary;base64,{b64_glb}" 
-                          style="width: 100%; height: 650px; background-color: #ffffff; border-radius: 15px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05);"
+                          style="width: 100%; height: 650px; background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b;"
                           camera-controls 
                           touch-action="pan-y" 
-                          shadow-intensity="1.5"
+                          shadow-intensity="2"
                           orientation="-90deg -90deg -90deg"
-                          exposure="1.1"
+                          exposure="1.2"
                           environment-image="neutral">
             </model-viewer>
             """
-            st.components.v1.html(model_viewer_html, height=670)
+            st.components.v1.html(model_viewer_html, height=660)
         else:
-            st.warning("3D 모델 파일을 찾을 수 없습니다.")
+            st.warning("GLB Model not found.")
 
     with right_col:
-        st.subheader("📊 Statistics & Detailed Data")
-        
-        # 가로 막대 그래프 (Plotly 전문 테마 적용)
+        # 통계 차트 (높이 축소)
         bar_data = pd.DataFrame({
-            '상태': ['Pass', 'Caution', 'Error', 'Missing'],
+            'Status': ['Pass', 'Caution', 'Error', 'Missing'],
             'Count': [status_counts.get('PASS', 0), status_counts.get('CAUTION', 0), 
                      status_counts.get('ERROR', 0), status_counts.get('MISSING', 0)],
-            'Status': ['PASS', 'CAUTION', 'ERROR', 'MISSING']
+            'Color': ['PASS', 'CAUTION', 'ERROR', 'MISSING']
         })
         
-        fig_bar = px.bar(bar_data, x='Count', y='상태', orientation='h',
-                         color='Status',
+        fig_bar = px.bar(bar_data, x='Count', y='Status', orientation='h',
+                         color='Color',
                          color_discrete_map={'PASS': '#94a3b8', 'CAUTION': '#22c55e', 
-                                            'ERROR': '#f59e0b', 'MISSING': '#ef4444'},
-                         text_auto=True)
+                                            'ERROR': '#f59e0b', 'MISSING': '#ef4444'})
         
         fig_bar.update_layout(
-            showlegend=False, height=280, margin=dict(l=10, r=10, t=10, b=10),
+            showlegend=False, height=220, margin=dict(l=0, r=10, t=10, b=10),
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            xaxis_title="Number of Rebars", yaxis_title=""
+            font_color="#94a3b8", xaxis_title="", yaxis_title=""
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
-        # 상세 리스트 (높이 확장 및 스타일 최적화)
-        st.write("🔍 **Individual Inspection Details**")
+        # 상세 데이터 테이블 (높이 최적화)
+        st.markdown("<div style='font-size:0.9rem; font-weight:700; margin-bottom:5px;'>📋 Detailed Inspection Log</div>", unsafe_allow_html=True)
         df_view = df[['Rebar_ID', 'Error_mm', 'Status', 'Layer', 'Direction']].copy()
-        df_view['sort'] = pd.to_numeric(df_view['Error_mm'], errors='coerce').fillna(-1)
-        df_view = df_view.sort_values(by='sort', ascending=False).drop(columns=['sort'])
+        df_view.columns = ['ID', 'Error(mm)', 'Stat', 'Lyr', 'Dir']
         
-        # 가독성을 위한 데이터프레임 스타일링
-        st.dataframe(df_view, use_container_width=True, height=420)
+        # 오차순 정렬
+        df_view['s'] = pd.to_numeric(df_view['Error(mm)'], errors='coerce').fillna(-1)
+        df_view = df_view.sort_values(by='s', ascending=False).drop(columns=['s'])
+
+        st.dataframe(df_view, use_container_width=True, height=360)
 
 else:
-    st.error("분석 결과 데이터(CSV)를 찾을 수 없습니다.")
+    st.error("Analysis data (CSV) missing.")
