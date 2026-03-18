@@ -136,7 +136,7 @@ elif selected_tab == "스캔 데이터 분석":
             fig_raw = go.Figure(data=[go.Scatter3d(
                 x=df_raw['x'], y=df_raw['y'], z=df_raw['z'], 
                 mode='markers', 
-                marker=dict(size=1.2, color='#94a3b8', opacity=0.4)
+                marker=dict(size=0.5, color='#94a3b8', opacity=0.4)
             )])
             fig_raw.update_layout(height=600, margin=dict(l=0, r=0, b=0, t=0), scene=dict(aspectmode='data'))
             st.plotly_chart(fig_raw, use_container_width=True)
@@ -148,7 +148,7 @@ elif selected_tab == "스캔 데이터 분석":
         if os.path.exists(seg_path):
             df_seg = pd.read_parquet(seg_path)
             # rebar_id별로 다른 색상을 입혀 시각화
-            fig_seg = px.scatter_3d(df_seg, x='x', y='y', z='z', color='rebar_id', size_max=2, opacity=0.8)
+            fig_seg = px.scatter_3d(df_seg, x='x', y='y', z='z', color='rebar_id', size_max=0.5, opacity=0.8)
             fig_seg.update_layout(height=600, margin=dict(l=0, r=0, b=0, t=0), scene=dict(aspectmode='data'))
             st.plotly_chart(fig_seg, use_container_width=True)
         else:
