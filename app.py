@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import base64
 import os
+import numpy as np
 
 # 1. 페이지 설정 및 LH 브랜드 테마 적용
 st.set_page_config(
@@ -12,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 파일을 Base64로 인코딩하는 함수 (이미지 및 모델 로드용)
+# 파일을 Base64로 인코딩하는 함수
 def get_base64_of_bin_file(bin_file):
     if os.path.exists(bin_file):
         with open(bin_file, 'rb') as f:
@@ -25,7 +26,7 @@ lh_logo_path = "lh_logo.png"
 logo_b64 = get_base64_of_bin_file(lh_logo_path)
 logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="lh-logo-img">' if logo_b64 else '<span style="font-size:2.5rem; font-weight:900;"><span style="color:#0055a6;">L</span><span style="color:#009944;">H</span></span>'
 
-# [LH Enterprise Dashboard CSS - 최종 확정 디자인 유지]
+# [LH Enterprise Dashboard CSS]
 st.markdown(f"""
     <style>
     header {{visibility: hidden !important;}}
@@ -65,8 +66,14 @@ st.markdown(f"""
     div[data-testid="stMetric"] {{
         background-color: rgba(255, 255, 255, 0.96) !important; padding: 15px 25px !important; border-radius: 15px !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08) !important; backdrop-filter: blur(10px);
     }}
-    .section-title {{ font-size: 1.7rem; font-weight: 800; margin-bottom: 10px; color: #0f172a; border-left: 8px solid #009944; padding-left: 18px; }}
-    .stDataFrame {{ border: 1px solid #e2e8f0; border-radius: 15px; overflow: hidden; background-color: #ffffff !important; box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05); z-index: 20; }}
+    .section-title {{ font-size: 1.7rem; font-weight: 800; margin-bottom: 15px; color: #0f172a; border-left: 8px solid #009944; padding-left: 18px; }}
+    .analysis-container {{
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 20px;
+        padding: 20px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 20px;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -120,51 +127,63 @@ if selected_tab == "철근 시공오차 분석":
             st.dataframe(df_view, use_container_width=True, height=360)
 
 elif selected_tab == "스캔 데이터 분석":
-    st.markdown("<div class='section-title'>🔍 포인트 클라우드 분석 및 피크 탐지</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>🔍 스캔 데이터 분석 프로세스</div>", unsafe_allow_html=True)
     
-    # 깃허브에 올리신 실제 파일들
+    # --- 1. 원본 데이터 섹션 ---
+    st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
+    st.subheader("1. 원본 데이터 (Raw Point Cloud)")
     raw_path = "raw_cloud.parquet"
-    seg_path = "segmented_rebars.parquet"
-    peak_img_path = "peak_finding_results.png"
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("1. 원본 데이터 (Raw Point Cloud)")
-        if os.path.exists(raw_path):
-            df_raw = pd.read_parquet(raw_path)
-            fig_raw = go.Figure(data=[go.Scatter3d(
-                x=df_raw['x'], y=df_raw['y'], z=df_raw['z'], 
-                mode='markers', 
-                marker=dict(size=0.5, color='#94a3b8', opacity=0.4)
-            )])
-            fig_raw.update_layout(height=600, margin=dict(l=0, r=0, b=0, t=0), scene=dict(aspectmode='data'))
-            st.plotly_chart(fig_raw, use_container_width=True)
-        else:
-            st.warning("'raw_cloud.parquet' 파일을 찾을 수 없습니다.")
-
-    with col2:
-        st.subheader("2. 개별 객체 분할 (Segmented Rebars)")
-        if os.path.exists(seg_path):
-            df_seg = pd.read_parquet(seg_path)
-            # rebar_id별로 다른 색상을 입혀 시각화
-            fig_seg = px.scatter_3d(df_seg, x='x', y='y', z='z', color='rebar_id', size_max=0.5, opacity=0.8)
-            fig_seg.update_traces(marker=dict(size=0.7)) # 점의 크기를 0.8 정도로 작게 설정
-            fig_seg.update_layout(height=600, margin=dict(l=0, r=0, b=0, t=0), scene=dict(aspectmode='data'))
-            st.plotly_chart(fig_seg, use_container_width=True)
-        else:
-            st.warning("'segmented_rebars.parquet' 파일을 찾을 수 없습니다.")
-
-    st.markdown("---")
-    st.subheader("3. 포인트 밀도 기반 피크 탐지 결과 (Peak Finding Analysis)")
-    
-    if os.path.exists(peak_img_path):
-        # 깃허브에 올린 분석 결과 이미지 표시
-        st.image(peak_img_path, caption="[Smoothing] Density Histogram & Peak Detection Logic", use_container_width=True)
+    if os.path.exists(raw_path):
+        df_raw = pd.read_parquet(raw_path)
+        fig_raw = go.Figure(data=[go.Scatter3d(
+            x=df_raw['x'], y=df_raw['y'], z=df_raw['z'], 
+            mode='markers', 
+            marker=dict(size=1.0, color='#94a3b8', opacity=0.4) # 포인트 크기 축소
+        )])
+        fig_raw.update_layout(height=600, margin=dict(l=0, r=0, b=0, t=0), scene=dict(aspectmode='data'))
+        st.plotly_chart(fig_raw, use_container_width=True)
     else:
-        st.info("💡 'peak_finding_results.png' 이미지를 찾을 수 없어 기본 차트를 표시합니다.")
-        # 이미지가 없을 경우를 대비한 대체 차트
-        st.line_chart(pd.DataFrame({"Density": [0, 100, 50, 200, 300, 50, 10]}, index=range(7)))
+        st.warning("'raw_cloud.parquet' 파일을 찾을 수 없습니다.")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # --- 2. 포인트 밀도 및 피크 탐지 섹션 ---
+    st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
+    st.subheader("2. 포인트 밀도 분포 및 피크 탐지 (Peak Finding)")
+    
+    # 4개 이미지 레이아웃 (2x2 그리드)
+    img_col1, img_col2 = st.columns(2)
+    with img_col1:
+        if os.path.exists("top v_x.png"):
+            st.image("top v_x.png", caption="Top Layer - Vertical (X-axis) Analysis", use_container_width=True)
+        if os.path.exists("bottom v_x.png"):
+            st.image("bottom v_x.png", caption="Bottom Layer - Vertical (X-axis) Analysis", use_container_width=True)
+            
+    with img_col2:
+        if os.path.exists("top h_z.png"):
+            st.image("top h_z.png", caption="Top Layer - Horizontal (Z-axis) Analysis", use_container_width=True)
+        if os.path.exists("bottom h_z.png"):
+            st.image("bottom h_z.png", caption="Bottom Layer - Horizontal (Z-axis) Analysis", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # --- 3. 객체 분할 결과 섹션 ---
+    st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
+    st.subheader("3. 개별 객체 분할 결과 (Segmented Rebars)")
+    seg_path = "segmented_rebars.parquet"
+    if os.path.exists(seg_path):
+        df_seg = pd.read_parquet(seg_path)
+        # rebar_id별 컬러링, 레전드 제거, 포인트 크기 축소
+        fig_seg = px.scatter_3d(df_seg, x='x', y='y', z='z', color='rebar_id', opacity=0.8)
+        fig_seg.update_traces(marker=dict(size=0.8)) # 포인트 크기 정밀 조정
+        fig_seg.update_layout(
+            showlegend=False, # 레전드 제거
+            height=700, 
+            margin=dict(l=0, r=0, b=0, t=0), 
+            scene=dict(aspectmode='data')
+        )
+        st.plotly_chart(fig_seg, use_container_width=True)
+    else:
+        st.warning("'segmented_rebars.parquet' 파일을 찾을 수 없습니다.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     st.markdown(f"<div style='height: 600px; background: rgba(248, 250, 252, 0.8); border: 2px dashed #cbd5e1; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8;'><h1 style='font-size: 3rem; font-weight: 900; margin-bottom: 20px;'>{selected_tab}</h1><p style='font-size: 1.2rem;'>해당 기능은 현재 구현 준비 중입니다.</p><div style='margin-top: 30px; font-size: 5rem; opacity: 0.2;'>🏗️</div></div>", unsafe_allow_html=True)
