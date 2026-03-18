@@ -40,52 +40,57 @@ st.markdown(f"""
     /* 폰트 설정 */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;700;900&display=swap');
     
-    /* 배경 디자인 구현 (상하단 연두색 포인트 블록) */
+    /* 전체 배경 설정 */
     .stApp {{
         background-color: #ffffff;
-        background-image: none;
         color: #1e293b;
         font-family: 'Inter', 'Noto Sans KR', sans-serif;
     }}
-    
-    /* 왼쪽 상단 연두색 블록 - z-index를 -1로 내려서 가려짐 방지 */
+
+    /* 배경 디자인 구현 (연두색 포인트 블록) 
+       콘텐츠에 가려지지 않도록 z-index 조절 및 메인 영역 투명화 */
     .stApp::before {{
         content: '';
         position: fixed;
         top: 0;
         left: 0;
-        width: 400px;
-        height: 300px;
+        width: 450px;
+        height: 350px;
         background-color: #b1d632;
         clip-path: polygon(0 0, 100% 0, 0 85%);
-        z-index: -1;
+        z-index: 0; /* 콘텐츠(z-index:1)보다 아래, 배경보다는 위 */
         opacity: 0.9;
         pointer-events: none;
     }}
     
-    /* 오른쪽 하단 연두색 블록 - z-index를 -1로 내려서 가려짐 방지 */
     .stApp::after {{
         content: '';
         position: fixed;
         bottom: 0;
         right: 0;
-        width: 400px;
-        height: 300px;
+        width: 450px;
+        height: 350px;
         background-color: #b1d632;
         clip-path: polygon(100% 15%, 100% 100%, 0 100%);
-        z-index: -1;
+        z-index: 0;
         opacity: 0.9;
         pointer-events: none;
     }}
 
-    /* 메인 컨테이너 설정 (콘텐츠가 배경보다 위에 오도록 명시) */
+    /* 메인 콘텐츠 영역을 투명하게 설정하여 배경 블록이 보이게 함 */
+    .main {{
+        background: transparent !important;
+    }}
+
+    /* 메인 컨테이너 설정 (상단 여백 최소화 및 레이어 순서 상향) */
     .main .block-container {{
         position: relative;
         z-index: 1;
-        padding-top: 1.5rem !important;
-        padding-bottom: 1rem !important;
+        padding-top: 0rem !important; /* 상단 여백 제거 */
+        padding-bottom: 0rem !important;
         padding-left: 3rem !important;
         padding-right: 3rem !important;
+        margin-top: -20px; /* 위로 더 바짝 붙임 */
     }}
 
     /* LH 브랜드 헤더 스타일 */
@@ -93,8 +98,8 @@ st.markdown(f"""
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
+        margin-bottom: 0.8rem;
+        padding-bottom: 0.8rem;
         border-bottom: 4px solid #009944;
     }}
     .lh-brand-box {{
@@ -103,18 +108,18 @@ st.markdown(f"""
         gap: 15px;
     }}
     .lh-logo-img {{
-        height: 65px; /* 로고 크기 살짝 확대 */
+        height: 70px; /* 로고 크기 확대 */
         width: auto;
-        margin-top: -10px
+        margin-top: -5px; /* 로고 위치 미세 조정 */
     }}
     .project-name {{
-        font-size: 2.2rem; /* 타이틀 글자 크기 대폭 확대 */
+        font-size: 2.6rem; /* 타이틀 글자 크기 대폭 확대 */
         font-weight: 900;
         color: #0f172a;
         margin-left: 15px;
-        border-left: 4px solid #e2e8f0;
+        border-left: 5px solid #e2e8f0;
         padding-left: 25px;
-        letter-spacing: -1px;
+        letter-spacing: -1.5px;
     }}
     .system-status {{
         font-size: 0.9rem;
@@ -129,8 +134,8 @@ st.markdown(f"""
 
     /* 지표 카드 */
     div[data-testid="stMetric"] {{
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        padding: 25px !important;
+        background-color: rgba(255, 255, 255, 0.92) !important;
+        padding: 20px 25px !important;
         border-radius: 15px !important;
         border: 1px solid #e2e8f0 !important;
         box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08) !important;
@@ -142,7 +147,7 @@ st.markdown(f"""
         font-weight: 700 !important;
     }}
     div[data-testid="stMetricValue"] {{
-        font-size: 2.8rem !important;
+        font-size: 3rem !important; /* 숫자 크기 확대 */
         font-weight: 900 !important;
         color: #0f172a !important;
     }}
@@ -152,7 +157,7 @@ st.markdown(f"""
         font-size: 1rem;
         color: #1e293b;
         background: rgba(255, 255, 255, 0.98);
-        padding: 20px;
+        padding: 15px 20px;
         border-radius: 15px;
         border: 2px solid #009944;
         height: 100%;
@@ -173,9 +178,9 @@ st.markdown(f"""
     
     /* 섹션 제목 스타일 */
     .section-title {{
-        font-size: 1.5rem;
+        font-size: 1.6rem;
         font-weight: 800;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         color: #0f172a;
         border-left: 8px solid #009944;
         padding-left: 18px;
@@ -211,8 +216,8 @@ if os.path.exists(csv_file):
     with m5:
         st.markdown("""
             <div class="legend-box">
-                <div style="font-weight: 900; color: #009944; margin-bottom: 8px; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">QC 품질 기준</div>
-                <div style="line-height: 1.8; color: #1e293b;">
+                <div style="font-weight: 900; color: #009944; margin-bottom: 6px; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">QC 품질 기준</div>
+                <div style="line-height: 1.7; color: #1e293b;">
                     ⚪ <b>PASS</b>: <20mm (정상 범위)<br>
                     🟢 <b>CAUTION</b>: 20-30mm (정밀 관찰)<br>
                     🟠 <b>ERROR</b>: >30mm (재시공 검토)
