@@ -21,12 +21,12 @@ def get_base64_of_bin_file(bin_file):
         return base64.b64encode(data).decode()
     return ""
 
-# 로고 설정 (lh_logo.png)
+# 로고 설정
 lh_logo_path = "lh_logo.png"
 logo_b64 = get_base64_of_bin_file(lh_logo_path)
 logo_html = f'<img src="data:image/png;base64,{logo_b64}" class="lh-logo-img">' if logo_b64 else '<span style="font-size:1.5rem; font-weight:900;"><span style="color:#0055a6;">L</span><span style="color:#009944;">H</span></span>'
 
-# [LH Enterprise Dashboard CSS - 최종 버전]
+# [LH Enterprise Dashboard CSS]
 st.markdown(f"""
     <style>
     header {{visibility: hidden !important;}}
@@ -46,10 +46,6 @@ st.markdown(f"""
     .project-name {{ font-size: 1.8rem; font-weight: 900; color: #0f172a; border-left: 3px solid #e2e8f0; padding-left: 15px; margin-left: 15px; letter-spacing: -1px; }}
     .section-title {{ font-size: 1.4rem; font-weight: 800; margin: 20px 0 10px 0; border-left: 6px solid #009944; padding-left: 12px; color: #0f172a; }}
     .analysis-container {{ background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 20px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }}
-    
-    div[data-testid="stMetric"] {{
-        background-color: white !important; padding: 10px 20px !important; border-radius: 12px !important; border: 1px solid #e2e8f0 !important;
-    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -64,13 +60,13 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-# 3. 탭 네비게이션
+# 탭 설정
 tabs = ["철근 시공오차 분석", "스캔 데이터 분석", "3D 모델링", "실시간 협업"]
 selected_tab = st.pills("", tabs, selection_mode="single", default="철근 시공오차 분석", label_visibility="collapsed")
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------
-# [TAB 1] 철근 시공오차 분석 (핵심 리포트 페이지)
+# [TAB 1] 철근 시공오차 분석 (회전값 복구 완료)
 # ------------------------------------------------------------------
 if selected_tab == "철근 시공오차 분석":
     csv_file = "final_qc_report_detailed.csv"
@@ -80,7 +76,6 @@ if selected_tab == "철근 시공오차 분석":
         df = pd.read_csv(csv_file)
         status_counts = df['Status'].value_counts()
         
-        # 1-1. 상단 요약 지표 (Metrics)
         m1, m2, m3, m4, m5 = st.columns([1, 1, 1, 1, 1.5])
         m1.metric("전체 검측", f"{len(df)}EA")
         m2.metric("정상 (PASS)", f"{status_counts.get('PASS', 0)}")
@@ -89,26 +84,24 @@ if selected_tab == "철근 시공오차 분석":
         with m5:
             st.markdown('<div style="font-size:0.85rem; padding:10px; border:2px solid #009944; border-radius:10px; background:white;"><b>LH 품질 기준:</b><br>⚪ PASS < 20mm | 🟢 CAUTION < 30mm | 🟠 ERROR > 30mm</div>', unsafe_allow_html=True)
         
-        # 1-2. 메인 분석 영역 (3D 뷰어 & 하이라이트 차트)
         left_col, right_col = st.columns([6, 4])
         
         with left_col:
-            st.markdown("<div class='section-title'>🏗️ 검측 결과 3D 하이라이트</div>", unsafe_allow_html=True)
+            st.markdown("<div class='section-title'>🏗️ 검측 결과 3D 하이라이트 (방향 보정됨)</div>", unsafe_allow_html=True)
             if os.path.exists(glb_file):
                 b64_glb = get_base64_of_bin_file(glb_file)
+                # orientation="-90deg -90deg -90deg" 설정 복구
                 st.components.v1.html(f"""
                     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
                     <model-viewer src="data:model/gltf-binary;base64,{b64_glb}" 
                                   style="width: 100%; height: 600px; background-color: #f8fafc; border-radius: 15px; border: 1px solid #e2e8f0;" 
                                   camera-controls touch-action="pan-y" shadow-intensity="1" 
-                                  exposure="1.2" environment-image="neutral" auto-rotate></model-viewer>
+                                  orientation="-90deg -90deg -90deg"
+                                  exposure="1.2" environment-image="neutral"></model-viewer>
                 """, height=610)
-            else:
-                st.info("💡 'construction_qc_model.glb' 파일을 업로드하면 3D 이슈 하이라이트가 표시됩니다.")
         
         with right_col:
             st.markdown("<div class='section-title'>📊 시공 품질 상태 분포</div>", unsafe_allow_html=True)
-            # 하이라이트 바 차트
             bar_data = pd.DataFrame({
                 '상태': ['Pass', 'Caution', 'Error', 'Missing'],
                 '개수': [status_counts.get('PASS', 0), status_counts.get('CAUTION', 0), status_counts.get('ERROR', 0), status_counts.get('MISSING', 0)],
@@ -122,15 +115,14 @@ if selected_tab == "철근 시공오차 분석":
             
             st.markdown("<div class='section-title'>📋 개별 검측 상세 데이터</div>", unsafe_allow_html=True)
             st.dataframe(df[['Rebar_ID', 'Error_mm', 'Status', 'Layer']], use_container_width=True, height=280)
-            
     else:
-        st.error("❌ 'final_qc_report_detailed.csv' 파일을 찾을 수 없습니다. 분석 결과를 업로드해주세요.")
+        st.error("분석 데이터가 없습니다.")
 
 # ------------------------------------------------------------------
 # [TAB 2] 스캔 데이터 분석
 # ------------------------------------------------------------------
 elif selected_tab == "스캔 데이터 분석":
-    st.markdown("<div class='section-title'>🔍 포인트 클라우드 분석 프로세스</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>🔍 포인트 클라우드 분석 및 피크 탐지</div>", unsafe_allow_html=True)
     raw_p, seg_p = "raw_cloud.parquet", "segmented_rebars.parquet"
     c1, c2 = st.columns(2)
     with c1:
@@ -149,7 +141,7 @@ elif selected_tab == "스캔 데이터 분석":
             fig_seg.update_layout(showlegend=False, height=450, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data'))
             st.plotly_chart(fig_seg, use_container_width=True)
     st.markdown("---")
-    st.subheader("3. 피크 탐지 분석 로그 (Peak Finding)")
+    st.subheader("3. 피크 탐지 분석 로그")
     ic1, ic2 = st.columns(2)
     with ic1:
         for img in ["top v_x.png", "bottom v_x.png"]:
@@ -162,11 +154,8 @@ elif selected_tab == "스캔 데이터 분석":
 # [TAB 3] 3D 모델링 (정합)
 # ------------------------------------------------------------------
 elif selected_tab == "3D 모델링":
-    st.markdown("<div class='section-title'>🏗️ 설계-시공 통합 디지털 트윈</div>", unsafe_allow_html=True)
-    mesh_p = "design_mesh.parquet"
-    vec_p = "rebar_vectors.parquet"
-    vec_a_p = "rebar_vectors_aligned.parquet"
-    
+    st.markdown("<div class='section-title'>🏗️ 설계-시공 통합 디지털 트윈 모델</div>", unsafe_allow_html=True)
+    mesh_p, vec_p, vec_a_p = "design_mesh.parquet", "rebar_vectors.parquet", "rebar_vectors_aligned.parquet"
     st.markdown("<div class='analysis-container'>", unsafe_allow_html=True)
     l_col, r_col = st.columns([7.8, 2.2])
     with r_col:
@@ -197,9 +186,8 @@ elif selected_tab == "3D 모델링":
         fig_3d.update_layout(height=700, margin=dict(l=0,r=0,b=0,t=0), scene=dict(aspectmode='data', bgcolor='white'))
         st.plotly_chart(fig_3d, use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
-
 # ------------------------------------------------------------------
 # [TAB 4] 실시간 협업
 # ------------------------------------------------------------------
 else:
-    st.markdown("<div style='height: 500px; display: flex; align-items: center; justify-content: center; border: 2px dashed #e2e8f0; border-radius: 20px; color: #94a3b8;'><h1>🏗️ 현장 협업 모듈 (구현 준비 중)</h1></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 500px; display: flex; align-items: center; justify-content: center; border: 2px dashed #e2e8f0; border-radius: 20px; color: #94a3b8;'><h1>🏗️ 현장 협업 모듈 준비 중</h1></div>", unsafe_allow_html=True)
