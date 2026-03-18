@@ -32,10 +32,11 @@ else:
 # [LH Enterprise Dashboard CSS - Premium White Version]
 st.markdown(f"""
     <style>
-    /* 상단 Streamlit 헤더/메뉴 제거 */
+    /* 상단 Streamlit 헤더/메뉴 및 하단 Manage app 메뉴 제거 */
     header {{visibility: hidden !important;}}
     footer {{visibility: hidden !important;}}
     [data-testid="stHeader"] {{display: none !important;}}
+    div[data-testid="stStatusWidget"] {{display: none !important;}} /* Manage app 버튼 제거 */
     
     /* 폰트 설정 */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;700;900&display=swap');
@@ -48,7 +49,7 @@ st.markdown(f"""
     }}
 
     /* 배경 디자인 구현 (연두색 포인트 블록) 
-       콘텐츠에 가려지지 않도록 z-index 조절 및 메인 영역 투명화 */
+       콘텐츠에 절대 가려지지 않도록 z-index를 음수(-2)로 설정 */
     .stApp::before {{
         content: '';
         position: fixed;
@@ -58,7 +59,7 @@ st.markdown(f"""
         height: 350px;
         background-color: #b1d632;
         clip-path: polygon(0 0, 100% 0, 0 85%);
-        z-index: 0; /* 콘텐츠(z-index:1)보다 아래, 배경보다는 위 */
+        z-index: -2; /* 가장 뒤로 보냄 */
         opacity: 0.9;
         pointer-events: none;
     }}
@@ -72,7 +73,7 @@ st.markdown(f"""
         height: 350px;
         background-color: #b1d632;
         clip-path: polygon(100% 15%, 100% 100%, 0 100%);
-        z-index: 0;
+        z-index: -2; /* 가장 뒤로 보냄 */
         opacity: 0.9;
         pointer-events: none;
     }}
@@ -85,12 +86,12 @@ st.markdown(f"""
     /* 메인 컨테이너 설정 (상단 여백 최소화 및 레이어 순서 상향) */
     .main .block-container {{
         position: relative;
-        z-index: 1;
-        padding-top: 0rem !important; /* 상단 여백 제거 */
+        z-index: 10; /* 배경 블록(-2)보다 훨씬 앞으로 배치 */
+        padding-top: 0.5rem !important; /* 상단 여백 추가 감소 */
         padding-bottom: 0rem !important;
         padding-left: 3rem !important;
         padding-right: 3rem !important;
-        margin-top: -20px; /* 위로 더 바짝 붙임 */
+        margin-top: -35px; /* 위로 더 바짝 붙임 */
     }}
 
     /* LH 브랜드 헤더 스타일 */
@@ -98,8 +99,8 @@ st.markdown(f"""
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.8rem;
-        padding-bottom: 0.8rem;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
         border-bottom: 4px solid #009944;
     }}
     .lh-brand-box {{
@@ -108,18 +109,18 @@ st.markdown(f"""
         gap: 15px;
     }}
     .lh-logo-img {{
-        height: 70px; /* 로고 크기 확대 */
+        height: 75px; /* 로고 크기 살짝 확대 */
         width: auto;
-        margin-top: -10px; /* 로고 위치 미세 조정 */
+        margin-top: -2px;
     }}
     .project-name {{
-        font-size: 2.6rem; /* 타이틀 글자 크기 대폭 확대 */
+        font-size: 2.8rem; /* 타이틀 글자 크기 추가 확대 */
         font-weight: 900;
         color: #0f172a;
         margin-left: 15px;
         border-left: 5px solid #e2e8f0;
         padding-left: 25px;
-        letter-spacing: -1.5px;
+        letter-spacing: -2px;
     }}
     .system-status {{
         font-size: 0.9rem;
@@ -134,32 +135,32 @@ st.markdown(f"""
 
     /* 지표 카드 */
     div[data-testid="stMetric"] {{
-        background-color: rgba(255, 255, 255, 0.92) !important;
-        padding: 20px 25px !important;
+        background-color: rgba(255, 255, 255, 0.96) !important;
+        padding: 15px 25px !important;
         border-radius: 15px !important;
         border: 1px solid #e2e8f0 !important;
         box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08) !important;
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(10px);
     }}
     div[data-testid="stMetricLabel"] {{
-        font-size: 1.2rem !important;
+        font-size: 1.1rem !important;
         color: #475569 !important;
         font-weight: 700 !important;
     }}
     div[data-testid="stMetricValue"] {{
-        font-size: 3rem !important; /* 숫자 크기 확대 */
+        font-size: 3rem !important;
         font-weight: 900 !important;
         color: #0f172a !important;
     }}
 
     /* 범례 박스 스타일 */
     .legend-box {{
-        font-size: 1rem;
+        font-size: 1.05rem;
         color: #1e293b;
         background: rgba(255, 255, 255, 0.98);
-        padding: 15px 20px;
+        padding: 12px 20px;
         border-radius: 15px;
-        border: 2px solid #009944;
+        border: 2.5px solid #009944;
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -167,20 +168,21 @@ st.markdown(f"""
         box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08);
     }}
 
-    /* 테이블(DataFrame) 스타일링 */
+    /* 테이블(DataFrame) 스타일링 (배경 불투명하게 설정) */
     .stDataFrame {{
         border: 1px solid #e2e8f0;
         border-radius: 15px;
         overflow: hidden;
-        background: white !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        background-color: #ffffff !important; /* 배경색 강제 지정 */
+        box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05);
+        z-index: 20;
     }}
     
     /* 섹션 제목 스타일 */
     .section-title {{
-        font-size: 1.6rem;
+        font-size: 1.7rem;
         font-weight: 800;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         color: #0f172a;
         border-left: 8px solid #009944;
         padding-left: 18px;
@@ -216,8 +218,8 @@ if os.path.exists(csv_file):
     with m5:
         st.markdown("""
             <div class="legend-box">
-                <div style="font-weight: 900; color: #009944; margin-bottom: 6px; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">QC 품질 기준</div>
-                <div style="line-height: 1.7; color: #1e293b;">
+                <div style="font-weight: 900; color: #009944; margin-bottom: 4px; font-size: 1.25rem; border-bottom: 2.5px solid #e2e8f0; padding-bottom: 4px;">QC 품질 기준</div>
+                <div style="line-height: 1.8; color: #1e293b;">
                     ⚪ <b>PASS</b>: <20mm (정상 범위)<br>
                     🟢 <b>CAUTION</b>: 20-30mm (정밀 관찰)<br>
                     🟠 <b>ERROR</b>: >30mm (재시공 검토)
@@ -268,11 +270,11 @@ if os.path.exists(csv_file):
                          text='Count')
         
         fig_bar.update_layout(
-            showlegend=False, height=250, margin=dict(l=0, r=20, t=10, b=10),
+            showlegend=False, height=230, margin=dict(l=0, r=20, t=10, b=10),
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             font_color="#0f172a", xaxis_title="", yaxis_title="",
             xaxis=dict(showgrid=True, gridcolor='#f1f5f9'), 
-            font=dict(size=15, weight='bold')
+            font=dict(size=16, weight='bold')
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
