@@ -59,7 +59,7 @@ st.markdown(f"""
         height: 350px;
         background-color: #b1d632;
         clip-path: polygon(0 0, 100% 0, 0 85%);
-        z-index: -1; /* 가장 뒤로 보냄 */
+        z-index: 0; /* 가장 뒤로 보냄 */
         opacity: 0.9;
         pointer-events: none;
     }}
