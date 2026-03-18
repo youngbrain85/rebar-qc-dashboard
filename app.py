@@ -111,7 +111,7 @@ st.markdown(f"""
     .lh-logo-img {{
         height: 75px; /* 로고 크기 살짝 확대 */
         width: auto;
-        margin-top: -2px;
+        margin-top: -10px;
     }}
     .project-name {{
         font-size: 2.8rem; /* 타이틀 글자 크기 추가 확대 */
